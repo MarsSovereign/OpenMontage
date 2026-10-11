@@ -703,6 +703,7 @@ class TestCapabilityMetadata:
             "google_tts",
             "inworld",
             "kling_official",
+            "local_tts",
             "openai",
             "piper",
         }
