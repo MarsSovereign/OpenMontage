@@ -607,6 +607,31 @@ Doubao Speech 2.0 is billed by character package or usage in Volcengine. OpenMon
 
 ---
 
+### Local Mandarin TTS — IndexTTS2 / CosyVoice service
+
+> **Natural Mandarin narration with no cloud key.** A local GPU speech model runs as its own service; the `local_zh_tts` tool calls it over HTTP and joins the TTS selector like any other provider.
+
+**Tools unlocked:** `local_zh_tts`
+**Env var:** `LOCAL_TTS_URL` (for example `http://127.0.0.1:9880`)
+
+#### Setup
+
+Install a backend (IndexTTS2 or CosyVoice 2), add reference voice clips, and start `python -m services.local_tts.server`. Full steps: [`services/local_tts/README.md`](../services/local_tts/README.md).
+
+#### What It Is Best For
+
+- Mandarin narration when cloud TTS quota or budget runs out
+- A consistent cloned narrator voice from your own reference clip
+- Offline or privacy-sensitive work
+
+The tool reports `unavailable` when `LOCAL_TTS_URL` is unset or the service is down, and `degraded` while the model is still loading. It returns audio only; run the transcriber on the output for word timestamps.
+
+#### Pricing
+
+Free. Needs a GPU with about 8 GB (IndexTTS2) or 4 GB (CosyVoice 2 0.5B) of memory.
+
+---
+
 ### Tencent Hunyuan Cloud — Video Generation
 
 > **Tencent Hunyuan (腾讯混元) cloud video generation via TokenHub API.** Generates
