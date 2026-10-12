@@ -198,6 +198,16 @@ ffmpeg -y -i final.mp4 \
   -vsync vfr frames/scene_%02d.png
 ```
 
+Better: one stamped frame per beat (scene starts, overlay and text landings), tiled into
+contact sheets you read in one look, with transitions scrubbed when something looks off.
+Follow `.agents/skills/review-loop/SKILL.md`:
+
+```python
+from tools.analysis.contact_sheet import ContactSheet
+ContactSheet().execute({"operation": "sheet", "input_path": "final.mp4",
+                        "beats": beats, "output_dir": "review"})
+```
+
 **Check each frame for:**
 - [ ] Images are visible (not black/dark frames)
 - [ ] Particles are rendering (sparkles, fireflies, etc. visible)

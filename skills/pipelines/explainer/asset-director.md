@@ -53,7 +53,7 @@ Asset Task:
 Also create tasks for:
 - **Narration audio** — one per script section (use `tts_selector` or a concrete TTS provider)
 - **Background music** — one track for the whole video (use `music_gen` or select from library)
-- **Sound effects** — per playbook's `sfx_style` (optional, use `music_gen` or stock)
+- **Sound effects** — per playbook's `sfx_style` (optional; `sfx_synth` for whooshes, pops, clicks, typing and risers on the edit timeline at no cost, see `.agents/skills/procedural-sfx/SKILL.md`; `music_gen` or stock for anything realistic)
 
 ### Step 2: Check Budget
 
