@@ -95,9 +95,9 @@ class CosyVoiceBackend(Backend):
     def synthesize(self, text: str, voice: Optional[Voice], speed: float, out_path: Path) -> None:
         import torch
         import torchaudio
-        from cosyvoice.utils.file_utils import load_wav
 
-        prompt = load_wav(str(voice.audio_path), 16000)
+        # Current CosyVoice takes the reference clip as a file path, not a loaded tensor.
+        prompt = str(voice.audio_path)
         if voice.transcript:
             chunks = self._tts.inference_zero_shot(
                 text, voice.transcript, prompt, stream=False, speed=speed

@@ -34,7 +34,7 @@ uv run modelscope download --model IndexTeam/IndexTTS-2 --local_dir checkpoints
 ```bash
 git clone --recursive https://github.com/FunAudioLLM/CosyVoice ~/CosyVoice && cd ~/CosyVoice
 python -m venv .venv && . .venv/bin/activate
-pip install -r requirements.txt fastapi uvicorn
+pip install -r requirements.txt fastapi uvicorn "setuptools<81"   # CosyVoice still imports pkg_resources
 python -c "from modelscope import snapshot_download; snapshot_download('iic/CosyVoice2-0.5B', local_dir='pretrained_models/CosyVoice2-0.5B')"
 ```
 
