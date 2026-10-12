@@ -134,7 +134,7 @@ When the **audio_mixer** tool is used in the compose stage:
 1. Set narration as primary track, music as secondary
 2. Apply ducking: music -18 to -20 dB below narration during speech
 3. Select music BPM from the table above based on the playbook mood
-4. Place SFX at transition points with 10-20ms audio lead
+4. Place SFX at transition points with 10-20ms audio lead (`sfx_synth` builds the SFX stem from cut and beat times, see `.agents/skills/procedural-sfx/SKILL.md`; pass it as a `role: "sfx"` track)
 5. Target -14 LUFS integrated for YouTube output
 6. Keep true peak below -1.5 dBTP
 7. For AI TTS narration, apply the processing chain above before mixing

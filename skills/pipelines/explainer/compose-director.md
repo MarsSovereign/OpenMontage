@@ -327,6 +327,21 @@ FrameSampler().execute({
 })
 ```
 
+**6b+. Beat contact sheets (recommended, required for motion-graphic-heavy videos):**
+`frame_sampler` gives one frame per cut; the `contact_sheet` tool tiles a stamped frame at
+every beat (cuts plus text reveals, overlays and stat landings) into a few images, and can
+scrub a transition. Follow `.agents/skills/review-loop/SKILL.md`: look at every sheet, fix,
+re-render, repeat until a full pass is clean.
+```python
+from tools.analysis.contact_sheet import ContactSheet
+ContactSheet().execute({
+    'operation': 'sheet',
+    'input_path': 'path/to/rendered_video.mp4',
+    'cuts': cuts,            # plus 'beats': [overlay and reveal times]
+    'output_dir': 'path/to/review-frames',
+})
+```
+
 **6c. Transcribe rendered audio (MANDATORY — do NOT skip):**
 ```python
 from tools.analysis.transcriber import Transcriber
@@ -353,6 +368,8 @@ result = Transcriber().execute({
 - Any words cut off at the end? (narration exceeding video duration)
 - Timing alignment — do narration segments roughly match their intended scenes?
 - Is background music audible? (transcriber may not capture music, but ffprobe confirms audio stream)
+- If SFX were added (`sfx_synth`): run `contact_sheet` with `operation: "waveform"` and the
+  beat list; hits sit on the beat lines and `loudness_ok` is true (−14 LUFS ±1, true peak ≤ −1 dBFS).
 
 **6f. Compile and present review to user:**
 
