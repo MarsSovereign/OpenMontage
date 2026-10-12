@@ -71,7 +71,7 @@ OPENAI_API_KEY=              # OpenAI TTS + GPT Image 2 images
 XAI_API_KEY=                 # xAI Grok image generation/editing + Grok video generation
 DOUBAO_SPEECH_API_KEY=       # Volcengine Doubao Speech TTS (strong Mandarin narration)
 DOUBAO_SPEECH_VOICE_TYPE=    # Default Doubao speaker/voice type
-DASHSCOPE_API_KEY=           # Alibaba DashScope (Qwen image gen, TTS, ASR with word timestamps)
+DASHSCOPE_API_KEY=           # Alibaba DashScope (Qwen image gen, TTS, ASR with word timestamps, Wan video)
 
 # AZURE AI SPEECH (optional cloud STT + TTS; one key unlocks both directions)
 AZURE_SPEECH_KEY=            # Azure AI Speech — azure_stt (Fast Transcription) + azure_tts (neural narration)
@@ -283,7 +283,7 @@ Official references: [Seedance model list](https://www.volcengine.com/docs/82379
 
 > **Best for Chinese-language production.** One key unlocks Qwen-Image generation, Qwen-TTS Mandarin narration, and Qwen-ASR with word-level timestamps — the only DashScope path that provides word-level granularity for subtitle alignment.
 
-**Tools unlocked:** `dashscope_image`, `dashscope_tts`, `dashscope_asr`
+**Tools unlocked:** `dashscope_image`, `dashscope_tts`, `dashscope_asr`, `wan_dashscope_video`
 **Env var:** `DASHSCOPE_API_KEY`
 
 #### Setup
@@ -298,6 +298,7 @@ Official references: [Seedance model list](https://www.volcengine.com/docs/82379
 - Chinese-language image generation with strong prompt understanding (Qwen-Image)
 - Natural Mandarin narration (Qwen-TTS, Cherry voice)
 - Word-level timestamp transcription for subtitle alignment (Qwen-ASR filetrans)
+- Low-cost Wan video (`wan_dashscope_video`): `wan2.6-i2v-flash` animates a still at about ¥0.15/s for silent 720P, and `wan3.0-video` gives top-ranked text-to-video or image-to-video at about ¥0.6/s for 720P (list prices, October 2026). Billing is pay as you go with no minimum, and each model has a small free quota for new accounts. Set `DASHSCOPE_BASE_URL` to your workspace endpoint if the default `https://dashscope.aliyuncs.com/api/v1` is not enabled for your account.
 - Replacing the broken `whisperx` slot for ASR
 
 #### API notes
@@ -1482,6 +1483,7 @@ These tools require only FFmpeg or Python packages — no GPU, no API key.
 | **HeyGen** | `HEYGEN_API_KEY` | `heygen_video` | Pay-as-you-go |
 | **Suno** | `SUNO_API_KEY` | `suno_music` | Pay-as-you-go |
 | **Tencent Hunyuan** | `TENCENT_TOKENHUB_API_KEY` | `hunyuan_cloud_video` | Pay-as-you-go (~$0.25–0.83/gen) |
+| **Alibaba Bailian Wan** | `DASHSCOPE_API_KEY` | `wan_dashscope_video` | Pay-as-you-go (~¥0.15–1.2/s) |
 | **Local GPU** | `VIDEO_GEN_LOCAL_ENABLED` | `wan_video`, `hunyuan_video`, `cogvideo_video`, `ltx_video_local` | Free (GPU required) |
 | **Local Diffusion** | — (install only) | `local_diffusion` | Free (GPU required) |
 | **Modal** | `MODAL_LTX2_ENDPOINT_URL` | `ltx_video_modal` | Self-hosted cloud |
