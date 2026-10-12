@@ -96,3 +96,17 @@ def test_rejects_bad_input(tmp_path):
 
 def test_loudness_of_silence_is_minus_inf():
     assert integrated_lufs([0.0] * 48000, [0.0] * 48000) == float("-inf")
+
+
+def test_transition_gain_and_range(tmp_path):
+    tool = SfxSynth()
+    quiet = tool.execute({"duration_seconds": 2, "output_path": str(tmp_path / "q.wav"), "mode": "master",
+                          "transitions": [1.0], "transition_gain": 0.1,
+                          "cues": [{"time": 0.2, "sound": "pop", "params": {"f0": 900, "f1": 400}, "gain": 0.3}]})
+    loud = tool.execute({"duration_seconds": 2, "output_path": str(tmp_path / "l.wav"), "mode": "master",
+                         "transitions": [1.0], "transition_gain": 0.5,
+                         "cues": [{"time": 0.2, "sound": "pop", "params": {"f0": 900, "f1": 400}, "gain": 0.3}]})
+    assert quiet.success and loud.success
+    assert _wav(tmp_path / "q.wav")[3] != _wav(tmp_path / "l.wav")[3]
+    r = tool.execute({"duration_seconds": 2, "output_path": str(tmp_path / "x.wav"), "transitions": [2.5]})
+    assert not r.success and "transition" in r.error

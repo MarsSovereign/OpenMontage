@@ -92,7 +92,17 @@ class ContactSheet(BaseTool):
             "every": {"type": "number", "exclusiveMinimum": 0, "description": "Grab a frame every N seconds (sheet only)."},
             "from_seconds": {"type": "number", "minimum": 0, "default": 0},
             "to_seconds": {"type": "number", "minimum": 0},
-            "offset": {"type": "number", "default": 0.3, "description": "Seconds after each beat, so motion has settled."},
+            "offset": {
+                "type": "number",
+                "default": 0.8,
+                "description": "Seconds after each beat, so springs and fades have settled. "
+                "Drop to 0.2-0.3 to catch an element mid-entrance.",
+            },
+            "include_ends": {
+                "type": "boolean",
+                "default": True,
+                "description": "With beats/cuts, also grab frame 0 (often the thumbnail) and the last frame, without offset.",
+            },
             "cols": {"type": "integer", "minimum": 1, "default": 4},
             "rows": {"type": "integer", "minimum": 1, "default": 2},
             "tile_width": {"type": "integer", "minimum": 120, "default": 540},
@@ -103,7 +113,10 @@ class ContactSheet(BaseTool):
     }
 
     resource_profile = ResourceProfile(cpu_cores=1, ram_mb=512, vram_mb=0, disk_mb=200)
-    idempotency_key_fields = ["operation", "input_path", "beats", "timestamps", "every", "offset"]
+    idempotency_key_fields = [
+        "operation", "input_path", "beats", "cuts", "timestamps", "every", "from_seconds", "to_seconds",
+        "offset", "include_ends", "cols", "rows", "tile_width", "name", "output_dir", "target_lufs",
+    ]
     side_effects = ["writes PNG sheets or a waveform PNG to output_dir"]
     user_visible_verification = ["Open every sheet and go through the review-loop checklist"]
 
@@ -153,8 +166,10 @@ class ContactSheet(BaseTool):
                 t += step
             name = inputs.get("name") or f"every{step:g}"
         elif beats:
-            offset = float(inputs.get("offset", 0.3))
+            offset = float(inputs.get("offset", 0.8))
             times = [b + offset for b in beats]
+            if inputs.get("include_ends", True):
+                times += [0.0, duration]
             name = inputs.get("name") or "beats"
         else:
             raise ValueError("Pass beats, cuts, timestamps or every")
@@ -207,19 +222,29 @@ class ContactSheet(BaseTool):
     def _waveform(self, media: Path, output_dir: Path, beats: list[float], inputs: dict[str, Any]) -> dict[str, Any]:
         duration = probe_duration(media)
         w, h = WAVE_SIZE
+        shown = [b for b in sorted(set(beats)) if 0 <= b <= duration]
         marks = "".join(
-            f",drawbox=x={round(b / duration * w)}:y=0:w=2:h=ih:color=0xD97757@0.9:t=fill"
-            for b in sorted(set(beats)) if 0 <= b <= duration
+            f",drawbox=x={round(b / duration * w)}:y=0:w=2:h=ih:color=0xD97757@0.9:t=fill" for b in shown
+        )
+        # Beat times printed along the top, alternating rows so neighbours don't overlap.
+        labels = "".join(
+            f",drawtext=text='{b:.2f}':x={round(b / duration * w) + 4}:y={6 + (i % 2) * 16}"
+            ":fontsize=13:fontcolor=0xD97757"
+            for i, b in enumerate(shown)
         )
         grid = f",drawgrid=w={w / duration:.3f}:h={h}:color=white@0.12"
         png = output_dir / f"{media.stem}-wave.png"
-        _ffmpeg([
-            "-i", str(media), "-filter_complex",
+        base = (
             f"color=c=0x141413:s={w}x{h}:d=1[bg];"
             f"[0:a]aformat=channel_layouts=mono,showwavespic=s={w}x{h}:scale=sqrt:colors=0x8A877F[w];"
-            f"[bg][w]overlay=format=auto{grid}{marks}",
-            "-frames:v", "1", str(png),
-        ])
+            f"[bg][w]overlay=format=auto{grid}{marks}"
+        )
+        try:
+            _ffmpeg(["-i", str(media), "-filter_complex", base + labels, "-frames:v", "1", str(png)])
+        except subprocess.CalledProcessError:
+            if not labels:
+                raise
+            _ffmpeg(["-i", str(media), "-filter_complex", base, "-frames:v", "1", str(png)])  # no drawtext
 
         lufs, peak = measure_loudness(media)
         target = float(inputs.get("target_lufs", TARGET_LUFS))

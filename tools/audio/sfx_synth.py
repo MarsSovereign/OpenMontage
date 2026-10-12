@@ -110,6 +110,12 @@ class SfxSynth(BaseTool):
                 "items": {"type": "number", "minimum": 0},
                 "description": "Cut times in seconds; each gets a whoosh whose peak lands on the cut.",
             },
+            "transition_gain": {
+                "type": "number",
+                "minimum": 0,
+                "default": TRANSITION_GAIN,
+                "description": "Level of the transition whooshes (hero hits 0.25-0.35, subtle 0.1-0.15).",
+            },
             "mode": {
                 "type": "string",
                 "enum": ["stem", "master"],
@@ -122,7 +128,9 @@ class SfxSynth(BaseTool):
     }
 
     resource_profile = ResourceProfile(cpu_cores=1, ram_mb=1024, vram_mb=0, disk_mb=100)
-    idempotency_key_fields = ["duration_seconds", "cues", "transitions", "mode", "target_lufs", "seed"]
+    idempotency_key_fields = [
+        "duration_seconds", "cues", "transitions", "transition_gain", "mode", "target_lufs", "seed",
+    ]
     side_effects = ["writes a 48 kHz stereo WAV to output_path"]
     user_visible_verification = ["Listen at each cue time: every hit should sit on its visual event"]
 
@@ -144,8 +152,11 @@ class SfxSynth(BaseTool):
         start = time.time()
         mix = Mix(duration, seed=int(inputs.get("seed", 11)))
         try:
+            gain = float(inputs.get("transition_gain", TRANSITION_GAIN))
             for i, t in enumerate(transitions):
-                place_transition(mix, float(t), pan=-0.3 if i % 2 == 0 else 0.3)
+                if not 0 <= float(t) < duration:
+                    raise ValueError(f"transition {t} is outside 0..{duration}")
+                place_transition(mix, float(t), pan=-0.3 if i % 2 == 0 else 0.3, gain=gain)
             for cue in cues:
                 place_cue(mix, cue, duration)
         except (TypeError, ValueError) as exc:
@@ -194,10 +205,10 @@ def list_sounds() -> list[dict[str, str]]:
     return out
 
 
-def place_transition(mix: Mix, t: float, pan: float = 0.0) -> None:
+def place_transition(mix: Mix, t: float, pan: float = 0.0, gain: float = TRANSITION_GAIN) -> None:
     w = TRANSITION_WHOOSH
     samples = synth.whoosh(w["dur"], w["f0"], w["f1"], peak=w["peak"])
-    mix.put(max(0.0, t - w["dur"] * w["peak"]), samples, TRANSITION_GAIN, pan)
+    mix.put(max(0.0, t - w["dur"] * w["peak"]), samples, gain, pan)
 
 
 def place_cue(mix: Mix, cue: dict[str, Any], duration: float) -> None:

@@ -19,7 +19,7 @@ A beat is any timeline moment where something changes on screen: a cut, a title 
 ## Loop
 
 1. Render a draft (half resolution is fine for iteration).
-2. Contact sheet at every beat, 0.3 s after it so motion has settled:
+2. Contact sheet at every beat, 0.8 s after it so springs and fades have settled, plus frame 0 and the last frame (added automatically; turn off with `include_ends: false`):
 
    ```python
    from tools.analysis.contact_sheet import ContactSheet
@@ -36,6 +36,8 @@ A beat is any timeline moment where something changes on screen: a cut, a title 
    - scrub a transition: `{"operation": "sheet", "every": 0.2, "from_seconds": 3, "to_seconds": 5}`
    - exact moments: `{"operation": "sheet", "timestamps": [3.7, 3.75, 3.8]}`
    - one full-size frame: `tile_width: 1920` with a single timestamp.
+   - an element mid-entrance: `offset: 0.2`.
+   Each run replaces the sheets of the same `name` (default `beats`, `every<N>`, `picked`). Pass `name` (e.g. `draft2`) to keep an earlier pass for comparison.
 5. Fix, re-render, go back to step 2. Stop when a full pass finds nothing.
 6. Final render: one more sheet pass on the final file, then the waveform check.
 
@@ -74,8 +76,8 @@ ContactSheet().execute({
     "output_dir": "projects/<p>/review",
 })
 ```
-- Transients sit on (or a hair after) the coral beat lines in the waveform PNG. A hit between lines means a hardcoded time or a stale SFX file.
-- `loudness_ok` is true: −14 LUFS ±1 and true peak ≤ −1 dBFS. If not, re-run `audio_mixer` with its loudness target rather than hand-gaining.
+- Transients sit on the coral beat lines (each labelled with its time) in the waveform PNG. A transition whoosh swells into its line and is loudest on it, so energy just before a cut is expected; a hit clearly between lines means a hardcoded time or a stale SFX file.
+- `loudness_ok` is true: −14 LUFS ±1 and true peak ≤ −1 dBFS. `audio_mixer`'s loudnorm is single-pass with a −1.5 dBTP ceiling, so `loudnorm_target: -14` usually lands 1.5–2.5 dB short on dynamic mixes. If it does, re-run `full_mix` with the target raised by the shortfall (e.g. measured −16.3 → try −11.7), measure again, and repeat until it is inside ±1. Don't hand-gain the file.
 
 ## Report
 

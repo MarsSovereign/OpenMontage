@@ -17,6 +17,7 @@ r = SfxSynth().execute({
     "duration_seconds": video_duration,
     "output_path": "projects/<p>/assets/audio/sfx.wav",
     "transitions": cut_times,                     # whoosh whose peak lands on each cut
+    "transition_gain": 0.25,                      # 0.1-0.15 for subtle cuts
     "cues": [
         {"time": 3.2, "sound": "pop", "params": {"f0": 900, "f1": 400}, "gain": 0.25, "pan": -0.3},
         {"time": 7.0, "sound": "typing", "params": {"end": 8.4, "chars": 18}},

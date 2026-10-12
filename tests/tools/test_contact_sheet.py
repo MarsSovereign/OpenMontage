@@ -44,14 +44,24 @@ def test_beats_from_cuts_lays_primary_cuts_end_to_end():
 
 def test_sheet_at_beats_with_offset(video, tmp_path):
     r = ContactSheet().execute({
-        "operation": "sheet", "input_path": str(video), "beats": [0, 1, 2, 3, 3.9],
+        "operation": "sheet", "input_path": str(video), "beats": [0, 1, 2, 3.5],
+        "output_dir": str(tmp_path), "tile_width": 160, "offset": 0.3, "include_ends": False,
+    })
+    assert r.success, r.error
+    assert r.data["times"] == [0.3, 1.3, 2.3, 3.8]
+    assert len(r.data["sheets"]) == 1
+    w, h = _size(r.data["sheets"][0])
+    assert w > 160 * 4 and h < 90 * 2  # four frames fill one row
+
+
+def test_default_offset_and_ends(video, tmp_path):
+    r = ContactSheet().execute({
+        "operation": "sheet", "input_path": str(video), "beats": [0, 1, 3.9],
         "output_dir": str(tmp_path), "tile_width": 160,
     })
     assert r.success, r.error
-    assert r.data["times"] == [0.3, 1.3, 2.3, 3.3, 3.99]  # last one clamped inside the video
-    assert len(r.data["sheets"]) == 1
-    w, h = _size(r.data["sheets"][0])
-    assert w > 160 * 4 and h > 90 * 2
+    # 0.8 s settle offset, plus frame 0 and the last frame; everything clamped inside the video
+    assert r.data["times"] == [0.0, 0.8, 1.8, 3.99]
 
 
 def test_short_sheet_shrinks_to_its_frames(video, tmp_path):
@@ -91,3 +101,4 @@ def test_waveform_reports_loudness(tmp_path):
     assert abs(r.data["lufs"] - (-14.0)) <= 1.0  # engine and ffmpeg ebur128 agree
     assert r.data["loudness_ok"]
     assert _size(r.data["waveform"]) == (1800, 280)
+    assert r.data["beats_marked"] == 1
