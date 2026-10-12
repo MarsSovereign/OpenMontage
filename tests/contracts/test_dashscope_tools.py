@@ -682,7 +682,7 @@ class TestDashscopeAsrSpecific:
 
 class TestDashscopeRegistryDiscovery:
 
-    def test_all_three_tools_discoverable(self):
+    def test_all_dashscope_tools_discoverable(self):
         from tools.tool_registry import ToolRegistry
         registry = ToolRegistry()
         registry.discover()
@@ -691,7 +691,7 @@ class TestDashscopeRegistryDiscovery:
             if t.provider == "dashscope"
         ]
         names = {t.name for t in dashscope_tools}
-        assert names == {"dashscope_image", "dashscope_tts", "dashscope_asr"}
+        assert names == {"dashscope_image", "dashscope_tts", "dashscope_asr", "wan_dashscope_video"}
 
     def test_image_selector_finds_dashscope(self):
         """image_selector should auto-discover dashscope_image by capability."""
