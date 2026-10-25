@@ -45,6 +45,8 @@ Use this skill before calling `comfyui_image`, `comfyui_video`, or `comfyui_musi
 
 - Identify templated nodes before execution: prompt text, seed, dimensions, frame count, source image, sampler settings, and output filename prefix.
 - Fixed nodes are model loaders, VAEs, text encoders, LoRA loaders, schedulers, and graph wiring. Do not mutate those unless the workflow author intended that customization.
+- Fill templated nodes through the tool instead of hand-editing JSON: `workflow_patches` maps node ID to `{input: value}` (prompt text, seed, length, `filename_prefix`), and `upload_files` maps node ID to `{input: local_path}` for LoadImage/LoadAudio/LoadVideo inputs. Files are uploaded to the server's input folder and the input is set to the returned name. Both inputs are part of the cache key.
+- Custom workflows must be in API format ("Export (API)"). A UI-format file (with `nodes` and `links`) is rejected with that hint.
 - For community workflows, inspect each loader node and note every required model or custom node before running. Missing models should be handled through the tool's structured `missing_models` payload when available.
 
 ### Video workflows need a temporal latent

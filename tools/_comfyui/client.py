@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import copy
 import json
+import mimetypes
 import os
 import random
 import time
@@ -16,6 +17,30 @@ from pathlib import Path
 from typing import Any, Callable
 
 import requests
+
+
+CUSTOM_WORKFLOW_FILL_PROPERTIES: dict[str, Any] = {
+    "workflow_patches": {
+        "type": "object",
+        "description": (
+            "Custom workflows only. Maps node ID -> {input_name: value}, applied "
+            "before submission (prompt text, seed, length, filename_prefix, ...)."
+        ),
+        "additionalProperties": {"type": "object"},
+    },
+    "upload_files": {
+        "type": "object",
+        "description": (
+            "Custom workflows only. Maps node ID -> {input_name: local_path}. Each "
+            "file (image, audio or video) is uploaded to the ComfyUI input folder "
+            "and the node input is set to its server-side name."
+        ),
+        "additionalProperties": {
+            "type": "object",
+            "additionalProperties": {"type": "string"},
+        },
+    },
+}
 
 
 class ComfyUIError(Exception):
@@ -403,6 +428,71 @@ class ComfyUIClient:
             )
         resp.raise_for_status()
         return resp.json()["name"]
+
+    def upload_file(self, local_path: Path, name: str | None = None) -> str:
+        """Upload any local input file (image, audio, video) to ComfyUI's input dir.
+
+        ComfyUI's ``/upload/image`` endpoint stores arbitrary files, so LoadAudio
+        and LoadVideo nodes can reference the result as well. Returns the value
+        a loader node expects: ``subfolder/name`` when the server used a
+        subfolder, otherwise ``name``.
+        """
+        local_path = Path(local_path)
+        if not local_path.is_file():
+            raise ComfyUIError(f"Upload source not found: {local_path}")
+        name = name or local_path.name
+        mime = mimetypes.guess_type(name)[0] or "application/octet-stream"
+        with open(local_path, "rb") as f:
+            resp = requests.post(
+                f"{self.server_url}/upload/image",
+                files={"image": (name, f, mime)},
+                data={"overwrite": "true"},
+                timeout=300,
+            )
+        resp.raise_for_status()
+        body = resp.json()
+        subfolder = body.get("subfolder") or ""
+        return f"{subfolder}/{body['name']}" if subfolder else body["name"]
+
+    def prepare_custom_workflow(
+        self,
+        workflow: dict,
+        *,
+        patches: dict[str, dict[str, Any]] | None = None,
+        uploads: dict[str, dict[str, str]] | None = None,
+    ) -> dict:
+        """Fill a caller-supplied API-format workflow before submission.
+
+        *patches* maps ``node_id`` -> ``{input_name: value}`` (prompt text,
+        seed, frame count, filename_prefix, ...). *uploads* maps ``node_id`` ->
+        ``{input_name: local_path}``; each file is uploaded and the node input is
+        set to the server-side name. Unknown node IDs fail before anything is
+        uploaded.
+        """
+        if not isinstance(workflow, dict) or (
+            "nodes" in workflow and "links" in workflow
+        ):
+            raise ComfyUIError(
+                "This looks like a ComfyUI UI-format workflow (it has 'nodes' and "
+                "'links'). Export it with 'Export (API)' and pass that file instead."
+            )
+        patches = patches or {}
+        uploads = uploads or {}
+        for node_id in [*patches, *uploads]:
+            if str(node_id) not in workflow:
+                raise ComfyUIError(
+                    f"Node {node_id!r} not found in workflow. "
+                    f"Available: {list(workflow.keys())}"
+                )
+        merged: dict[str, dict[str, Any]] = {
+            str(k): dict(v) for k, v in patches.items()
+        }
+        for node_id, files in uploads.items():
+            for key, local_path in files.items():
+                merged.setdefault(str(node_id), {})[key] = self.upload_file(
+                    Path(local_path)
+                )
+        return self.patch_workflow(workflow, merged) if merged else workflow
 
     # ------------------------------------------------------------------
     # High-level helper

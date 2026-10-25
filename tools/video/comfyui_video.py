@@ -26,7 +26,11 @@ from tools.base_tool import (
     ToolStatus,
     ToolTier,
 )
-from tools._comfyui.client import ComfyUIClient, ComfyUIError
+from tools._comfyui.client import (
+    CUSTOM_WORKFLOW_FILL_PROPERTIES,
+    ComfyUIClient,
+    ComfyUIError,
+)
 from tools._comfyui.metadata import (
     BUNDLED_MODEL_STACKS,
     COMFYUI_SETUP_OFFER,
@@ -237,6 +241,7 @@ class ComfyUIVideo(BaseTool):
                 "type": "string",
                 "description": "ComfyUI output node ID for custom workflow_json/workflow_path.",
             },
+            **CUSTOM_WORKFLOW_FILL_PROPERTIES,
             "workflow_name": {
                 "type": "string",
                 "description": "Optional human-readable provenance label for a custom workflow.",
@@ -290,6 +295,10 @@ class ComfyUIVideo(BaseTool):
         "height",
         "num_frames",
         "seed",
+        "workflow_json",
+        "workflow_path",
+        "workflow_patches",
+        "upload_files",
     ]
     side_effects = ["writes video file to output_path"]
     user_visible_verification = [
@@ -503,6 +512,11 @@ class ComfyUIVideo(BaseTool):
         try:
             if custom_workflow:
                 workflow = self._load_custom_workflow(inputs)
+                workflow = self._client.prepare_custom_workflow(
+                    workflow,
+                    patches=inputs.get("workflow_patches"),
+                    uploads=inputs.get("upload_files"),
+                )
                 output_node = str(inputs["output_node"])
             elif model_family in partner_nodes:
                 node_class = partner_nodes[model_family]
