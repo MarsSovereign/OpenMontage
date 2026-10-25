@@ -29,7 +29,11 @@ from tools.base_tool import (
     ToolStatus,
     ToolTier,
 )
-from tools._comfyui.client import ComfyUIClient, ComfyUIError
+from tools._comfyui.client import (
+    CUSTOM_WORKFLOW_FILL_PROPERTIES,
+    ComfyUIClient,
+    ComfyUIError,
+)
 from tools._comfyui.metadata import (
     BUNDLED_MODEL_STACKS,
     COMFYUI_SETUP_OFFER,
@@ -126,6 +130,7 @@ class ComfyUIMusic(BaseTool):
                 "type": "string",
                 "description": "ComfyUI output node ID for custom workflow_json/workflow_path.",
             },
+            **CUSTOM_WORKFLOW_FILL_PROPERTIES,
             "workflow_name": {
                 "type": "string",
                 "description": "Optional human-readable provenance label for a custom workflow.",
@@ -157,7 +162,16 @@ class ComfyUIMusic(BaseTool):
         cpu_cores=2, ram_mb=8000, vram_mb=8000, disk_mb=500, network_required=False,
     )
     retry_policy = RetryPolicy(max_retries=1, retryable_errors=["timeout"])
-    idempotency_key_fields = ["prompt", "lyrics", "duration_seconds", "seed"]
+    idempotency_key_fields = [
+        "prompt",
+        "lyrics",
+        "duration_seconds",
+        "seed",
+        "workflow_json",
+        "workflow_path",
+        "workflow_patches",
+        "upload_files",
+    ]
     side_effects = ["writes audio file to output_path"]
     user_visible_verification = ["Listen to generated audio for mood, genre accuracy, and quality"]
 
@@ -235,6 +249,11 @@ class ComfyUIMusic(BaseTool):
         try:
             if custom_workflow:
                 workflow = self._load_custom_workflow(inputs)
+                workflow = self._client.prepare_custom_workflow(
+                    workflow,
+                    patches=inputs.get("workflow_patches"),
+                    uploads=inputs.get("upload_files"),
+                )
                 output_node = str(inputs["output_node"])
             else:
                 workflow = ComfyUIClient.load_workflow(_WORKFLOWS / "ace-step-1-t2a.json")

@@ -6,11 +6,12 @@ import without any of the heavy TTS packages installed.
 
 Voices are reference clips in ``LOCAL_TTS_VOICES_DIR``: ``<name>.wav`` plus an
 optional ``<name>.txt`` holding the clip's transcript (CosyVoice zero-shot
-cloning uses it; IndexTTS2 does not need it).
+cloning uses it; IndexTTS does not need it).
 """
 
 from __future__ import annotations
 
+import inspect
 import os
 import shutil
 import subprocess
@@ -81,6 +82,42 @@ class IndexTTS2Backend(Backend):
             _retime(out_path, speed)
 
 
+class IndexTTS25Backend(Backend):
+    """IndexTTS2.5 (indextts.infer_v2_5 in the same repo), with native duration control."""
+
+    name = "indextts25"
+
+    def load(self) -> None:
+        from indextts.infer_v2_5 import IndexTTS2
+
+        model_dir = self.model_dir or Path("checkpoints_25")
+        self._tts = IndexTTS2(
+            cfg_path=str(model_dir / "config.yaml"),
+            model_dir=str(model_dir),
+            use_bf16=True,
+        )
+        self._lang = os.environ.get("LOCAL_TTS_LANG", "ZH")
+        self._has_duration = (
+            "duration_factor" in inspect.signature(self._tts.infer).parameters
+        )
+
+    def synthesize(self, text: str, voice: Optional[Voice], speed: float, out_path: Path) -> None:
+        kwargs = {}
+        if speed != 1.0 and self._has_duration:
+            # duration_factor scales length, so faster speech is a smaller factor.
+            kwargs["duration_factor"] = round(1.0 / speed, 3)
+        # 2.5's infer() requires lang.
+        self._tts.infer(
+            spk_audio_prompt=str(voice.audio_path),
+            text=text,
+            output_path=str(out_path),
+            lang=self._lang,
+            **kwargs,
+        )
+        if speed != 1.0 and not self._has_duration:
+            _retime(out_path, speed)
+
+
 class CosyVoiceBackend(Backend):
     """CosyVoice 2 (github.com/FunAudioLLM/CosyVoice), zero-shot voice cloning."""
 
@@ -104,6 +141,38 @@ class CosyVoiceBackend(Backend):
             )
         else:
             chunks = self._tts.inference_cross_lingual(text, prompt, stream=False, speed=speed)
+        speech = torch.cat([c["tts_speech"] for c in chunks], dim=1)
+        torchaudio.save(str(out_path), speech, self._tts.sample_rate)
+
+
+# CosyVoice3 expects this system prefix before the prompt text.
+_COSYVOICE3_PREFIX = "You are a helpful assistant.<|endofprompt|>"
+
+
+class CosyVoice3Backend(Backend):
+    """Fun-CosyVoice3 via CosyVoice's AutoModel, zero-shot voice cloning."""
+
+    name = "cosyvoice3"
+
+    def load(self) -> None:
+        from cosyvoice.cli.cosyvoice import AutoModel
+
+        model_dir = self.model_dir or Path("pretrained_models/Fun-CosyVoice3-0.5B")
+        self._tts = AutoModel(model_dir=str(model_dir))
+
+    def synthesize(self, text: str, voice: Optional[Voice], speed: float, out_path: Path) -> None:
+        import torch
+        import torchaudio
+
+        prompt = str(voice.audio_path)
+        if voice.transcript:
+            chunks = self._tts.inference_zero_shot(
+                text, _COSYVOICE3_PREFIX + voice.transcript, prompt, stream=False, speed=speed
+            )
+        else:
+            chunks = self._tts.inference_cross_lingual(
+                _COSYVOICE3_PREFIX + text, prompt, stream=False, speed=speed
+            )
         speech = torch.cat([c["tts_speech"] for c in chunks], dim=1)
         torchaudio.save(str(out_path), speech, self._tts.sample_rate)
 
@@ -140,7 +209,16 @@ class PiperBackend(Backend):
             raise RuntimeError(f"piper failed: {proc.stderr.strip()[-500:]}")
 
 
-BACKENDS = {b.name: b for b in (IndexTTS2Backend, CosyVoiceBackend, PiperBackend)}
+BACKENDS = {
+    b.name: b
+    for b in (
+        IndexTTS2Backend,
+        IndexTTS25Backend,
+        CosyVoiceBackend,
+        CosyVoice3Backend,
+        PiperBackend,
+    )
+}
 
 
 def _retime(path: Path, speed: float) -> None:

@@ -8,6 +8,8 @@ in natural Mandarin without a cloud key. The `local_zh_tts` tool
 |---|---|---|---|
 | `indextts2` | [IndexTTS2](https://github.com/index-tts/index-tts) | ~8 GB fp16 | Zero-shot cloning from a reference clip, emotion-aware |
 | `cosyvoice` | [CosyVoice 2](https://github.com/FunAudioLLM/CosyVoice) 0.5B | ~4 GB | Lighter and faster; uses the clip's transcript when present |
+| `indextts25` | IndexTTS2.5 (`indextts.infer_v2_5`, same repo) | ~8 GB bf16 | Faster than 2; native speed via `duration_factor`; `LOCAL_TTS_LANG` (default `ZH`) |
+| `cosyvoice3` | [Fun-CosyVoice3](https://github.com/FunAudioLLM/CosyVoice) 0.5B via `AutoModel` | ~5 GB | Dialects and `[breath]` tags; the system prefix is added for you |
 | `piper` | Piper `.onnx` voice | CPU | No GPU; for testing the service end to end |
 
 The model adapters target the upstream inference APIs as of October 2026
@@ -68,7 +70,8 @@ LOCAL_TTS_DEFAULT_VOICE=narrator \
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `LOCAL_TTS_BACKEND` | `indextts2` | `indextts2`, `cosyvoice` or `piper` |
+| `LOCAL_TTS_BACKEND` | `indextts2` | `indextts2`, `indextts25`, `cosyvoice`, `cosyvoice3` or `piper` |
+| `LOCAL_TTS_LANG` | `ZH` | Language passed to IndexTTS2.5 |
 | `LOCAL_TTS_MODEL_DIR` | backend default | Model weights folder |
 | `LOCAL_TTS_VOICES_DIR` | `./voices` | Reference clips |
 | `LOCAL_TTS_DEFAULT_VOICE` | none | Voice used when a request names none |

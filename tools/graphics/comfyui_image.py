@@ -23,7 +23,11 @@ from tools.base_tool import (
     ToolStatus,
     ToolTier,
 )
-from tools._comfyui.client import ComfyUIClient, ComfyUIError
+from tools._comfyui.client import (
+    CUSTOM_WORKFLOW_FILL_PROPERTIES,
+    ComfyUIClient,
+    ComfyUIError,
+)
 from tools._comfyui.metadata import (
     BUNDLED_MODEL_STACKS,
     COMFYUI_SETUP_OFFER,
@@ -107,6 +111,7 @@ class ComfyUIImage(BaseTool):
                 "type": "string",
                 "description": "ComfyUI output node ID for custom workflow_json/workflow_path.",
             },
+            **CUSTOM_WORKFLOW_FILL_PROPERTIES,
             "workflow_name": {
                 "type": "string",
                 "description": "Optional human-readable provenance label for a custom workflow.",
@@ -130,7 +135,17 @@ class ComfyUIImage(BaseTool):
         cpu_cores=2, ram_mb=8000, vram_mb=8000, disk_mb=500, network_required=False,
     )
     retry_policy = RetryPolicy(max_retries=1, retryable_errors=["timeout"])
-    idempotency_key_fields = ["prompt", "width", "height", "steps", "seed"]
+    idempotency_key_fields = [
+        "prompt",
+        "width",
+        "height",
+        "steps",
+        "seed",
+        "workflow_json",
+        "workflow_path",
+        "workflow_patches",
+        "upload_files",
+    ]
     side_effects = ["writes image file to output_path"]
     user_visible_verification = ["Inspect generated image for quality and prompt adherence"]
 
@@ -202,6 +217,11 @@ class ComfyUIImage(BaseTool):
         try:
             if custom_workflow:
                 workflow = self._load_custom_workflow(inputs)
+                workflow = self._client.prepare_custom_workflow(
+                    workflow,
+                    patches=inputs.get("workflow_patches"),
+                    uploads=inputs.get("upload_files"),
+                )
                 output_node = str(inputs["output_node"])
             else:
                 workflow = ComfyUIClient.load_workflow(_WORKFLOWS / "flux2-txt2img.json")
@@ -227,6 +247,14 @@ class ComfyUIImage(BaseTool):
         except Exception as exc:
             return ToolResult(success=False, error=f"ComfyUI image generation failed: {exc}")
 
+        if custom_workflow:
+            # Report what the submitted workflow ran with, not this tool's defaults.
+            actual = ComfyUIClient.workflow_settings(workflow)
+            seed = actual.get("seed", inputs.get("seed"))
+            width = actual.get("width")
+            height = actual.get("height")
+            steps = actual.get("steps")
+            guidance = inputs.get("guidance")
         model_name = self._model_name(inputs, custom_workflow)
         return ToolResult(
             success=True,
