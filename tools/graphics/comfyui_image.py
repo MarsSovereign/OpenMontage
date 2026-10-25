@@ -247,6 +247,14 @@ class ComfyUIImage(BaseTool):
         except Exception as exc:
             return ToolResult(success=False, error=f"ComfyUI image generation failed: {exc}")
 
+        if custom_workflow:
+            # Report what the submitted workflow ran with, not this tool's defaults.
+            actual = ComfyUIClient.workflow_settings(workflow)
+            seed = actual.get("seed", inputs.get("seed"))
+            width = actual.get("width")
+            height = actual.get("height")
+            steps = actual.get("steps")
+            guidance = inputs.get("guidance")
         model_name = self._model_name(inputs, custom_workflow)
         return ToolResult(
             success=True,

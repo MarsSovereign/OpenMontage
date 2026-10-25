@@ -592,6 +592,26 @@ class ComfyUIClient:
         return w
 
     @staticmethod
+    def workflow_settings(workflow: dict) -> dict[str, Any]:
+        """Read the generation settings a submitted API workflow actually uses.
+
+        Returns whichever of ``seed``, ``steps``, ``width``, ``height`` and
+        ``length`` (frame count) appear as literal node inputs, taking the first
+        node that sets each. Linked inputs (``[node_id, slot]``) are skipped.
+        """
+        aliases = {"seed": "seed", "noise_seed": "seed", "steps": "steps",
+                   "width": "width", "height": "height", "length": "length"}
+        found: dict[str, Any] = {}
+        for node in workflow.values():
+            if not isinstance(node, dict):
+                continue
+            for key, value in (node.get("inputs") or {}).items():
+                name = aliases.get(key)
+                if name and name not in found and isinstance(value, (int, float)):
+                    found[name] = value
+        return found
+
+    @staticmethod
     def random_seed() -> int:
         """Return a random seed suitable for ComfyUI noise nodes."""
         return random.randint(0, 2**32 - 1)

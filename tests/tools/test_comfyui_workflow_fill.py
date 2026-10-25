@@ -109,3 +109,31 @@ def test_video_tool_submits_filled_workflow(tmp_path: Path):
     assert result.success, result.error
     submitted = tool._client.generate.call_args.args[0]
     assert submitted["3"]["inputs"]["text"] == "Lyra says hello"
+
+
+def test_image_tool_reports_the_workflows_own_settings(tmp_path: Path):
+    import json
+
+    workflow = {
+        "3": {"class_type": "CLIPTextEncode", "inputs": {"text": "old"}},
+        "5": {"class_type": "EmptyLatentImage", "inputs": {"width": 768, "height": 1344}},
+        "6": {"class_type": "KSampler", "inputs": {"seed": 1, "steps": 8, "model": ["1", 0]}},
+        "9": {"class_type": "SaveImage", "inputs": {"filename_prefix": "x"}},
+    }
+    tool = ComfyUIImage()
+    tool._client = MagicMock(wraps=_client())
+    tool._client.is_available = MagicMock(return_value=True)
+    out = tmp_path / "cat.png"
+    tool._client.generate = MagicMock(return_value=[out])
+    result = tool.execute(
+        {
+            "prompt": "cat",
+            "workflow_json": json.dumps(workflow),
+            "output_node": "9",
+            "workflow_patches": {"6": {"seed": 20261025}},
+            "output_path": str(out),
+        }
+    )
+    assert result.success, result.error
+    assert (result.data["width"], result.data["height"], result.data["steps"]) == (768, 1344, 8)
+    assert result.seed == 20261025

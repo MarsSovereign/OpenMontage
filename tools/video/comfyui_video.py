@@ -587,6 +587,17 @@ class ComfyUIVideo(BaseTool):
                     "billing": "ComfyUI Partner Node credits",
                 }
             )
+        elif custom_workflow:
+            # Report what the submitted workflow ran with, not the bundled defaults.
+            actual = ComfyUIClient.workflow_settings(workflow)
+            seed = actual.get("seed", inputs.get("seed"))
+            result_data.update(
+                {
+                    "width": actual.get("width"),
+                    "height": actual.get("height"),
+                    "num_frames": actual.get("length"),
+                }
+            )
         else:
             width = inputs.get("width", 832 if operation == "text_to_video" else 640)
             height = inputs.get("height", 480 if operation == "text_to_video" else 640)
