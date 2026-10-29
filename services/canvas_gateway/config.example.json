@@ -1,0 +1,91 @@
+{
+  "host": "127.0.0.1",
+  "port": 7860,
+  "work_dir": "L:/VideoGeneration/canvas_gateway/jobs",
+  "canvas_dist": "H:/win-ai/infinite-canvas/web/dist",
+  "exclusive_gpu": true,
+  "services": {
+    "comfyui": {
+      "url": "http://127.0.0.1:8189",
+      "health": "/system_stats",
+      "start": ["H:/ComfyUI-aki-v3.2/python/python.exe", "-s", "main.py", "--port", "8189",
+                "--fast", "fp16_accumulation", "--use-sage-attention"],
+      "cwd": "H:/ComfyUI-aki-v3.2/ComfyUI",
+      "start_timeout": 300,
+      "idle_stop_minutes": 10
+    },
+    "tts": {
+      "url": "http://127.0.0.1:9880",
+      "health": "/health",
+      "start": ["H:/win-ai/OpenMontage/.venv/Scripts/python.exe", "-m", "services.local_tts.server"],
+      "cwd": "H:/win-ai/OpenMontage",
+      "env": {"LOCAL_TTS_BACKEND": "indextts25", "LOCAL_TTS_VOICES_DIR": "L:/VideoGeneration/素材库/音色/克隆参考"},
+      "start_timeout": 300,
+      "idle_stop_minutes": 10
+    }
+  },
+  "models": [
+    {
+      "name": "Qwen 出图 (image)",
+      "capability": "image",
+      "type": "comfyui",
+      "service": "comfyui",
+      "workflow": "H:/win-ai/canvas_gateway/workflows/qwen21_t2i_api.json",
+      "output_node": "<SaveImage 节点 ID>",
+      "default_size": [768, 1344],
+      "size_multiple": 16,
+      "max_pixels": 2400000,
+      "max_count": 4,
+      "inputs": {
+        "prompt": ["<正向提示词节点 ID>", "text"],
+        "seed": ["<KSampler 节点 ID>", "seed"],
+        "width": ["<EmptyLatent 节点 ID>", "width"],
+        "height": ["<EmptyLatent 节点 ID>", "height"]
+      }
+    },
+    {
+      "name": "H3 图生视频 (video)",
+      "capability": "video",
+      "type": "comfyui",
+      "service": "comfyui",
+      "workflow": "H:/win-ai/canvas_gateway/workflows/h3_i2v_api.json",
+      "output_node": "<SaveVideo 节点 ID>",
+      "default_size": [1280, 736],
+      "max_pixels": 950000,
+      "fps": 24,
+      "frame_grid": [17, 5],
+      "max_seconds": 15,
+      "min_images": 1,
+      "timeout_seconds": 7200,
+      "inputs": {
+        "prompt": ["<提示词节点 ID>", "text"],
+        "seeds": [["<采样器节点 ID>", "noise_seed"]],
+        "width": ["<尺寸节点 ID>", "width"],
+        "height": ["<尺寸节点 ID>", "height"],
+        "frames": ["<尺寸节点 ID>", "length"],
+        "images": [["<首帧 LoadImage 节点 ID>", "image"]]
+      }
+    },
+    {
+      "name": "H3 口播 (video)",
+      "capability": "video",
+      "type": "command",
+      "services": ["comfyui"],
+      "min_images": 1,
+      "min_audios": 1,
+      "default_size": [1280, 736],
+      "timeout_seconds": 14400,
+      "cwd": "L:/VideoGeneration/tools/h3-longvideo",
+      "command": ["H:/win-ai/OpenMontage/.venv/Scripts/python.exe", "make_film.py",
+                  "--first-frame", "{image1}", "--audio", "{audio1}", "--prompt-file", "{prompt_file}",
+                  "--quality", "720", "--out", "{out}", "--work", "{job_dir}"]
+    },
+    {
+      "name": "配音 Lyra (tts)",
+      "capability": "audio",
+      "type": "tts",
+      "service": "tts",
+      "voice": "<克隆参考里的音色名>"
+    }
+  ]
+}
