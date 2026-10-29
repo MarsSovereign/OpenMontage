@@ -13,6 +13,7 @@ openai>=2.44.0         # Videos API support for Sora 2
 # Backlot - the living storyboard (local board server)
 fastapi>=0.110
 uvicorn>=0.29
+python-multipart>=0.0.9   # form uploads for the canvas gateway (services/canvas_gateway)
 watchfiles>=0.21
 
 websockets>=14.0       # Eleven v4 Turbo and realtime audio transports
