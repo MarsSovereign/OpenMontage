@@ -67,7 +67,7 @@
   - `button`、`icon`、`hint`、`minutes`：按钮名字、图标、说明，以及大概要几分钟。
   - `fields`：表单里要填的项，按顺序排列，类型有 `image`、`audio`、`video`、`speech`（录音或打字配音二选一）、`prompt`、`seconds`。每项可以写 `label`、`placeholder`、`optional`。
   - `sizes`：画面尺寸下拉框，例如 `[{"value": "1280x736", "label": "横屏 720p"}]`。
-- 配音模型（`capability: "audio"`）会自动出现在口播的音色下拉框里。
+- 配音模型（`capability: "audio"`）都会出现在口播的音色下拉框里，名字取 `easy.voice_label`（没写就用模型名）。只有写了 `easy.button` 的配音模型才会变成大按钮。下拉框默认选顶层 `default_voice` 指定的模型，没写就选第一个有 `easy` 的。
 
 ## 配置文件
 

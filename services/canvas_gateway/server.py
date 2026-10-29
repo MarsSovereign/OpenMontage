@@ -236,12 +236,20 @@ class Gateway:
 
     def easy_modes(self) -> dict:
         """Buttons for the beginner page, in config order."""
-        voices = [{"model": n, "label": (m.get("easy") or {}).get("button") or n}
-                  for n, m in self.models.items() if m.get("capability") == "audio"]
+        voices = []
+        for n, m in self.models.items():
+            if m.get("capability") == "audio":
+                easy = m.get("easy") or {}
+                voices.append({"model": n, "label": easy.get("voice_label") or easy.get("button") or n})
+        default_voice = self.config.get("default_voice")
+        if default_voice not in self.models:
+            default_voice = next((v["model"] for v in voices if self.models[v["model"]].get("easy")), None)
         modes = []
         for name, m in self.models.items():
             easy = m.get("easy")
-            if not easy:
+            # A voice only becomes a big button when it names one; otherwise it
+            # just shows up in the 口播 voice list (there can be dozens).
+            if not easy or (m.get("capability") == "audio" and not easy.get("button")):
                 continue
             modes.append({
                 "model": name,
@@ -253,7 +261,7 @@ class Gateway:
                 "sizes": easy.get("sizes") or [],
                 "minutes": easy.get("minutes"),
             })
-        return {"modes": modes, "voices": voices}
+        return {"modes": modes, "voices": voices, "default_voice": default_voice}
 
     def _adapter(self, model: dict):
         kind = model.get("type", "comfyui")

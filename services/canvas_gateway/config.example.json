@@ -4,6 +4,7 @@
   "work_dir": "L:/VideoGeneration/canvas_gateway/jobs",
   "canvas_dist": "H:/win-ai/infinite-canvas/web/dist",
   "exclusive_gpu": true,
+  "default_voice": "配音 Lyra (tts)",
   "services": {
     "comfyui": {
       "url": "http://127.0.0.1:8189",
@@ -17,9 +18,11 @@
     "tts": {
       "url": "http://127.0.0.1:9880",
       "health": "/health",
-      "start": ["H:/win-ai/OpenMontage/.venv/Scripts/python.exe", "-m", "services.local_tts.server"],
+      "start": ["H:/win-ai/index-tts/.venv/Scripts/python.exe", "-m", "services.local_tts.server"],
       "cwd": "H:/win-ai/OpenMontage",
-      "env": {"LOCAL_TTS_BACKEND": "indextts25", "LOCAL_TTS_VOICES_DIR": "L:/VideoGeneration/素材库/音色/克隆参考"},
+      "env": {"LOCAL_TTS_BACKEND": "indextts25", "LOCAL_TTS_MODEL_DIR": "checkpoints_25",
+              "PYTHONPATH": "H:/win-ai/index-tts;H:/win-ai/OpenMontage",
+              "LOCAL_TTS_VOICES_DIR": "L:/VideoGeneration/素材库/音色/克隆参考"},
       "start_timeout": 300,
       "idle_stop_minutes": 10
     }

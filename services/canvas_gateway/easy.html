@@ -88,7 +88,7 @@
 <script>
 const $ = (sel, el = document) => el.querySelector(sel);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
-let MODES = [], VOICES = [], current = null;
+let MODES = [], VOICES = [], DEFAULT_VOICE = null, current = null;
 const files = {};          // field key -> File
 const ACCEPT = {image: "image/*", audio: "audio/*", video: "video/*"};
 const STATE = {queued: "排队中", in_progress: "生成中", completed: "完成", failed: "失败"};
@@ -96,7 +96,7 @@ const STATE = {queued: "排队中", in_progress: "生成中", completed: "完成
 async function load() {
   const r = await fetch("/easy/modes");
   const data = await r.json();
-  MODES = data.modes; VOICES = data.voices;
+  MODES = data.modes; VOICES = data.voices; DEFAULT_VOICE = data.default_voice;
   const box = $("#modes");
   if (!MODES.length) { box.innerHTML = '<p class="empty">配置文件里还没有给模型加 "easy" 设置。</p>'; return; }
   box.innerHTML = MODES.map((m, i) =>
@@ -141,7 +141,7 @@ function fieldHtml(f, n) {
     return `<div class="field">${label(f, word)}${dropHtml(key, f.type, `点这里选${word}，或把文件拖进来`)}</div>`;
   }
   if (f.type === "speech") {
-    const opts = VOICES.map(v => `<option value="${esc(v.model)}">${esc(v.label)}</option>`).join("");
+    const opts = VOICES.map(v => `<option value="${esc(v.model)}"${v.model === DEFAULT_VOICE ? " selected" : ""}>${esc(v.label)}</option>`).join("");
     return `<div class="field">${label(f, "声音")}
       <div class="tabs"><button type="button" class="on" data-tab="file">我有录音</button>` +
       (VOICES.length ? `<button type="button" data-tab="text">输入文字自动配音</button>` : "") + `</div>

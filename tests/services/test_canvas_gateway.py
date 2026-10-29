@@ -240,6 +240,16 @@ def test_easy_page_and_modes(setup):
     assert [m["button"] for m in modes["modes"]] == ["数字人口播", "配音 Lyra"]
     assert modes["modes"][1]["fields"] == [{"type": "prompt", "label": "要念的文字"}]
     assert modes["voices"] == [{"model": "local-tts-lyra", "label": "配音 Lyra"}]
+    assert modes["default_voice"] == "local-tts-lyra"
+
+
+def test_voices_without_a_button_stay_in_the_dropdown_only(setup):
+    client, gateway, *_ = setup
+    gateway.models["local-tts-dongbei"] = {"name": "local-tts-dongbei", "capability": "audio", "type": "tts",
+                                           "easy": {"voice_label": "东北大姐"}}
+    modes = client.get("/easy/modes").json()
+    assert [m["button"] for m in modes["modes"]] == ["数字人口播", "配音 Lyra"]
+    assert {"model": "local-tts-dongbei", "label": "东北大姐"} in modes["voices"]
 
 
 def test_easy_talk_from_text_chains_tts_then_video(setup, monkeypatch):
