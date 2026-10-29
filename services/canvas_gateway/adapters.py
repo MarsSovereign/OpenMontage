@@ -19,6 +19,8 @@ from typing import Any
 
 import requests
 
+from services.canvas_gateway.services import child_flags
+
 
 @dataclass
 class GenRequest:
@@ -170,6 +172,7 @@ class CommandAdapter:
         log_path = job_dir / "log.txt"
         with open(log_path, "w", encoding="utf-8", errors="replace") as log:
             proc = subprocess.run(args, cwd=m.get("cwd"), stdout=log, stderr=subprocess.STDOUT,
+                                  stdin=subprocess.DEVNULL, creationflags=child_flags(),
                                   timeout=int(m.get("timeout_seconds", 14400)))
         if proc.returncode != 0:
             tail = log_path.read_text(encoding="utf-8", errors="replace")[-600:]

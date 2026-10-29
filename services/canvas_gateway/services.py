@@ -52,6 +52,18 @@ def _default_probe(url: str) -> bool:
         return False
 
 
+def child_flags() -> int:
+    """Windows: give every child its own hidden console.
+
+    A child that inherits the gateway's console dies at start with 0xC0000142
+    once the window that launched the gateway is closed. That killed ComfyUI
+    and the ffmpeg it runs for VAE decode.
+    """
+    if os.name != "nt":
+        return 0
+    return subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NO_WINDOW
+
+
 def _kill_tree(proc: subprocess.Popen) -> None:
     if proc.poll() is not None:
         return
@@ -97,8 +109,7 @@ class ServiceManager:
                 raise RuntimeError(f"{name} 没有运行（{spec.url}），配置里也没有启动命令。")
             log.info("starting %s: %s", name, spec.start)
             env = {**os.environ, **spec.env}
-            flags = subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0
-            self._owned[name] = self._popen(spec.start, cwd=spec.cwd, env=env, creationflags=flags)
+            self._owned[name] = self._popen(spec.start, cwd=spec.cwd, env=env, creationflags=child_flags())
             deadline = self._clock() + spec.start_timeout
             while self._clock() < deadline:
                 if self._owned[name].poll() is not None:
