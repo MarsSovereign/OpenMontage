@@ -73,8 +73,10 @@ def setup(tmp_path):
                 "name": "local-talk-video", "capability": "video", "type": "command", "min_images": 1, "min_audios": 1,
                 "command": [sys.executable, "-c",
                             "import shutil,sys; shutil.copy(sys.argv[1], sys.argv[2])", "{audio1}", "{out}"],
+                "easy": {"button": "数字人口播", "fields": [{"type": "image"}, {"type": "speech"}]},
             },
-            {"name": "local-tts-lyra", "capability": "audio", "type": "tts", "service": "tts", "voice": "lyra"},
+            {"name": "local-tts-lyra", "capability": "audio", "type": "tts", "service": "tts", "voice": "lyra",
+             "easy": {"button": "配音 Lyra"}},
         ],
     }
     comfy = FakeComfy()
@@ -223,3 +225,64 @@ def test_service_manager_stops_only_what_it_started(tmp_path):
     assert mgr.stop_idle(busy=True) == []
     assert mgr.stop_idle(busy=False) == ["comfyui"]
     assert mgr.owned() == []
+
+
+class FakeTTS:
+    status_code = 200
+    content = b"RIFF-tts"
+    text = ""
+
+
+def test_easy_page_and_modes(setup):
+    client, *_ = setup
+    assert "一键出片" in client.get("/easy").text
+    modes = client.get("/easy/modes").json()
+    assert [m["button"] for m in modes["modes"]] == ["数字人口播", "配音 Lyra"]
+    assert modes["modes"][1]["fields"] == [{"type": "prompt", "label": "要念的文字"}]
+    assert modes["voices"] == [{"model": "local-tts-lyra", "label": "配音 Lyra"}]
+
+
+def test_easy_talk_from_text_chains_tts_then_video(setup, monkeypatch):
+    client, gateway, *_ = setup
+    monkeypatch.setattr("services.canvas_gateway.adapters.requests.post", lambda *a, **k: FakeTTS())
+    resp = client.post(
+        "/easy/run",
+        data={"model": "local-talk-video", "speech_text": "大家好，我是 Lyra", "voice": "local-tts-lyra"},
+        files=[("image", ("me.png", b"img", "image/png"))],
+    ).json()
+    assert len(resp["needs"]) == 1
+    job = gateway.jobs[resp["id"]]
+    assert job.done.wait(10) and job.status == "completed", job.error
+    # The talk "video" is the TTS audio copied through by the fake command.
+    assert client.get(f"/jobs/{job.id}/file").content == b"RIFF-tts"
+    listed = client.get("/v1/jobs").json()["data"]
+    assert [j["id"] for j in listed[:2]] == [job.id, resp["needs"][0]]
+    assert listed[0]["file"] == f"/jobs/{job.id}/file" and listed[0]["file_type"] == "video/mp4"
+
+
+def test_easy_talk_stops_when_the_voice_over_fails(setup, monkeypatch):
+    client, gateway, *_ = setup
+
+    class Broken(FakeTTS):
+        status_code = 500
+        text = "显存不足"
+
+    monkeypatch.setattr("services.canvas_gateway.adapters.requests.post", lambda *a, **k: Broken())
+    resp = client.post(
+        "/easy/run",
+        data={"model": "local-talk-video", "speech_text": "你好", "voice": "local-tts-lyra"},
+        files=[("image", ("me.png", b"img", "image/png"))],
+    ).json()
+    job = gateway.jobs[resp["id"]]
+    job.done.wait(10)
+    assert job.status == "failed" and "配音没有成功" in job.error
+
+
+def test_easy_image_runs_async_and_serves_the_png(setup):
+    client, gateway, *_ = setup
+    resp = client.post("/easy/run", data={"model": "local-qwen-image", "prompt": "海边", "size": "768x1344"}).json()
+    job = gateway.jobs[resp["id"]]
+    assert job.done.wait(10) and job.status == "completed"
+    file = client.get(f"/jobs/{job.id}/file")
+    assert file.headers["content-type"] == "image/png" and file.content == b"fake-output"
+    assert client.get(f"/jobs/{job.id}/file?download=true").headers["content-disposition"].startswith("attachment")

@@ -12,6 +12,15 @@ one, so the canvas runs our local models instead of paid ones:
     POST /v1/audio/speech            local TTS, one model per voice
     GET  /health                     queue, current job, services we started
 
+For people who find a canvas too much, the same jobs also run from a plain
+page with a few big buttons:
+
+    GET  /easy                       the beginner page (easy.html)
+    GET  /easy/modes                 its buttons: models with an "easy" section
+    POST /easy/run                   start any job; 口播 can chain TTS → video
+    GET  /v1/jobs                    recent jobs for the history list
+    GET  /jobs/{id}/file             a finished job's file (image, video or audio)
+
 All jobs share one GPU, so a single worker runs them in order. The built
 canvas (web/dist) can be served from the same address, which avoids CORS.
 
@@ -35,7 +44,7 @@ from typing import Any, Callable
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi.responses import FileResponse, Response
 
 from services.canvas_gateway.adapters import (
     AdapterError,
@@ -43,6 +52,7 @@ from services.canvas_gateway.adapters import (
     ComfyWorkflowAdapter,
     GenRequest,
     TTSAdapter,
+    copy_result,
     save_uploads,
 )
 from services.canvas_gateway.services import ServiceManager, ServiceSpec
@@ -51,6 +61,9 @@ log = logging.getLogger("canvas_gateway")
 
 STATUS_WAIT_SECONDS = 20.0
 _KIND_CN = {"image": "出图", "video": "视频", "audio": "配音"}
+_MEDIA = {".png": "image/png", ".jpg": "image/jpeg", ".webp": "image/webp", ".mp4": "video/mp4",
+          ".wav": "audio/wav", ".mp3": "audio/mpeg"}
+EASY_PAGE = Path(__file__).with_name("easy.html")
 
 
 @dataclass
@@ -66,6 +79,7 @@ class Job:
     output: Path | None = None
     started: float | None = None
     finished: float | None = None
+    needs: list[str] = field(default_factory=list)  # jobs whose audio this one uses (TTS → 口播)
     done: threading.Event = field(default_factory=threading.Event)
 
     def public(self) -> dict:
@@ -80,6 +94,19 @@ class Job:
         if self.error:
             body["error"] = {"message": self.error}
         return body
+
+    def summary(self, queue_position: int | None) -> dict:
+        """What the beginner page's history list shows."""
+        end = self.finished or (time.time() if self.started else None)
+        return {
+            **self.public(),
+            "kind": self.kind,
+            "prompt": self.request.prompt[:200],
+            "seconds_spent": round(end - self.started) if end and self.started else None,
+            "queue_position": queue_position,
+            "file": f"/jobs/{self.id}/file" if self.status == "completed" else None,
+            "file_type": _MEDIA.get(self.output.suffix.lower(), "") if self.output else "",
+        }
 
     def save(self) -> None:
         meta = {
@@ -136,7 +163,8 @@ class Gateway:
             except (OSError, ValueError):
                 continue
             job = Job(id=meta["id"], model=meta["model"], kind=meta["kind"], created=meta["created"],
-                      dir=meta_path.parent, request=GenRequest(prompt=meta.get("prompt", "")))
+                      dir=meta_path.parent, request=GenRequest(prompt=meta.get("prompt", "")),
+                      started=meta.get("started"), finished=meta.get("finished"))
             if meta["status"] == "completed" and meta.get("output") and Path(meta["output"]).is_file():
                 job.status, job.output = "completed", Path(meta["output"])
             else:
@@ -153,12 +181,13 @@ class Gateway:
             raise HTTPException(400, f"{name} 不是{_KIND_CN[kind]}模型。")
         return model
 
-    def submit(self, model_name: str, kind: str, req_builder: Callable[[Path], GenRequest]) -> Job:
+    def submit(self, model_name: str, kind: str, req_builder: Callable[[Path], GenRequest],
+               needs: list[str] | None = None) -> Job:
         job_id = f"{kind}_{time.strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:6]}"
         job_dir = self.work_dir / job_id
         job_dir.mkdir(parents=True)
         job = Job(id=job_id, model=model_name, kind=kind, created=time.time(), dir=job_dir,
-                  request=req_builder(job_dir))
+                  request=req_builder(job_dir), needs=list(needs or []))
         job.save()
         self.jobs[job_id] = job
         self.queue.put(job)
@@ -170,6 +199,7 @@ class Gateway:
         job.status, job.started = "in_progress", time.time()
         job.save()
         try:
+            self._take_needed_audio(job)
             needed = list(model.get("services") or ([model["service"]] if model.get("service") else []))
             if self.exclusive_gpu:
                 self.services.stop_owned(keep=set(needed))
@@ -188,6 +218,42 @@ class Gateway:
             job.save()
             self.current = None
             job.done.set()
+
+    def _take_needed_audio(self, job: Job) -> None:
+        """A 口播 job started from text uses the voice-over its TTS job made."""
+        for i, need_id in enumerate(job.needs, start=1):
+            need = self.jobs[need_id]
+            need.done.wait()  # one worker runs jobs in order, so this is normally already done
+            if need.status != "completed" or not need.output:
+                raise AdapterError(f"配音没有成功，所以视频没有开始：{need.error or '未知原因'}")
+            dest = job.dir / "in" / "audios" / f"tts_{i:02d}{need.output.suffix}"
+            job.request.audios.insert(i - 1, copy_result(need.output, dest))
+
+    def recent(self, limit: int = 30) -> list[dict]:
+        waiting = [j.id for j in list(self.queue.queue)]
+        jobs = sorted(self.jobs.values(), key=lambda j: j.created, reverse=True)[:limit]
+        return [j.summary(waiting.index(j.id) + 1 if j.id in waiting else None) for j in jobs]
+
+    def easy_modes(self) -> dict:
+        """Buttons for the beginner page, in config order."""
+        voices = [{"model": n, "label": (m.get("easy") or {}).get("button") or n}
+                  for n, m in self.models.items() if m.get("capability") == "audio"]
+        modes = []
+        for name, m in self.models.items():
+            easy = m.get("easy")
+            if not easy:
+                continue
+            modes.append({
+                "model": name,
+                "capability": m.get("capability"),
+                "button": easy.get("button", name),
+                "icon": easy.get("icon", ""),
+                "hint": easy.get("hint", ""),
+                "fields": easy.get("fields") or _default_fields(m),
+                "sizes": easy.get("sizes") or [],
+                "minutes": easy.get("minutes"),
+            })
+        return {"modes": modes, "voices": voices}
 
     def _adapter(self, model: dict):
         kind = model.get("type", "comfyui")
@@ -248,6 +314,22 @@ async def _form_files(form, *names: str) -> list[tuple[str, bytes]]:
                     seen.add(key)
                     out.append((item.filename or "", data))
     return out
+
+
+def _default_fields(model: dict) -> list[dict]:
+    fields: list[dict] = []
+    for kind, field_type, label in (("images", "image", "参考图"), ("audios", "audio", "音频"),
+                                    ("videos", "video", "参考视频")):
+        for _ in range(int(model.get(f"min_{kind}", 0))):
+            fields.append({"type": field_type, "label": label})
+    if model.get("capability") == "audio":
+        fields.append({"type": "prompt", "label": "要念的文字"})
+    else:
+        fields.append({"type": "prompt", "label": "想要什么画面", "optional": True})
+    if model.get("capability") == "video" and model.get("type") == "comfyui":
+        fields.append({"type": "seconds", "label": "时长（秒）", "default": model.get("default_seconds", 5),
+                       "max": model.get("max_seconds", 15)})
+    return fields
 
 
 def create_app(gateway: Gateway, *, start_worker: bool = True, canvas_dist: Path | None = None) -> FastAPI:
@@ -342,6 +424,58 @@ def create_app(gateway: Gateway, *, start_worker: bool = True, canvas_dist: Path
         job = gateway.submit(name, "audio", lambda _d: GenRequest(prompt=text, speed=speed))
         gateway.wait(job, float(gateway.models[name].get("timeout_seconds", 600)))
         return Response(job.output.read_bytes(), media_type="audio/wav")
+
+    @app.get("/v1/jobs")
+    def jobs(limit: int = 30) -> dict:
+        return {"data": gateway.recent(limit)}
+
+    @app.get("/jobs/{job_id}/file")
+    def job_file(job_id: str, download: bool = False):
+        job = gateway.jobs.get(job_id)
+        if job is None or job.status != "completed" or not job.output or not job.output.is_file():
+            raise HTTPException(404, "这个任务还没有结果。")
+        media = _MEDIA.get(job.output.suffix.lower(), "application/octet-stream")
+        name = f"{job_id}{job.output.suffix}" if download else None
+        return FileResponse(job.output, media_type=media, filename=name)
+
+    @app.get("/easy")
+    def easy_page():
+        return FileResponse(EASY_PAGE, media_type="text/html")
+
+    @app.get("/easy/modes")
+    def easy_modes() -> dict:
+        return gateway.easy_modes()
+
+    @app.post("/easy/run")
+    async def easy_run(request: Request) -> dict:
+        form = await request.form()
+        name = str(form.get("model", ""))
+        model = gateway.models.get(name)
+        if model is None:
+            raise HTTPException(404, f"没有这个本地模型：{name}")
+        kind = model.get("capability", "video")
+        images = await _form_files(form, "image")
+        videos = await _form_files(form, "video")
+        audios = await _form_files(form, "audio")
+        prompt = str(form.get("prompt", ""))
+        speech_text = str(form.get("speech_text", "")).strip()
+        needs: list[str] = []
+        if speech_text and not audios:
+            voice = str(form.get("voice", ""))
+            gateway.model(voice, "audio")
+            needs.append(gateway.submit(voice, "audio", lambda _d: GenRequest(prompt=speech_text)).id)
+        w, h = _parse_size(form.get("size"))
+
+        def build(job_dir: Path) -> GenRequest:
+            return GenRequest(
+                prompt=prompt, width=w, height=h, seconds=_seconds(form.get("seconds")),
+                images=save_uploads(job_dir, "images", images),
+                videos=save_uploads(job_dir, "videos", videos),
+                audios=save_uploads(job_dir, "audios", audios),
+            )
+
+        job = gateway.submit(name, kind, build, needs=needs)
+        return {"id": job.id, "needs": needs}
 
     if canvas_dist and (canvas_dist / "index.html").is_file():
         @app.get("/{path:path}")

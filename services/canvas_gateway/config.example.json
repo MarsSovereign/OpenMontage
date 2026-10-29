@@ -27,6 +27,9 @@
   "models": [
     {
       "name": "Qwen 出图 (image)",
+      "easy": {"button": "出图", "icon": "🖼", "minutes": 1, "hint": "用一句话描述想要的画面，越具体越好。",
+               "fields": [{"type": "prompt", "label": "想要什么画面", "placeholder": "例如：一位穿白衬衫的年轻女孩站在海边，傍晚，电影感"}],
+               "sizes": [{"value": "768x1344", "label": "竖屏 9:16"}, {"value": "1344x768", "label": "横屏 16:9"}, {"value": "1024x1024", "label": "方形"}]},
       "capability": "image",
       "type": "comfyui",
       "service": "comfyui",
@@ -45,6 +48,11 @@
     },
     {
       "name": "H3 图生视频 (video)",
+      "easy": {"button": "图片变视频", "icon": "🎞", "minutes": 4, "hint": "放一张图当第一帧，写一句它怎么动。",
+               "fields": [{"type": "image", "label": "第一帧图片"},
+                          {"type": "prompt", "label": "画面怎么动", "placeholder": "例如：她转头微笑，向镜头挥手"},
+                          {"type": "seconds", "label": "时长（秒）", "default": 5, "max": 15}],
+               "sizes": [{"value": "1280x736", "label": "横屏 720p"}, {"value": "736x1280", "label": "竖屏 720p"}]},
       "capability": "video",
       "type": "comfyui",
       "service": "comfyui",
@@ -68,6 +76,9 @@
     },
     {
       "name": "H3 口播 (video)",
+      "easy": {"button": "数字人口播", "icon": "🗣", "minutes": 25, "hint": "放一张人物照片，再给一段录音或直接打字配音。22 秒左右的口播大约 25 分钟。",
+               "fields": [{"type": "image", "label": "人物照片（第一帧）"}, {"type": "speech", "label": "声音"},
+                          {"type": "prompt", "label": "动作和表情", "optional": true, "placeholder": "例如：微笑着对镜头说话，偶尔点头"}]},
       "capability": "video",
       "type": "command",
       "services": ["comfyui"],
@@ -82,6 +93,7 @@
     },
     {
       "name": "配音 Lyra (tts)",
+      "easy": {"button": "配音 Lyra", "icon": "🎙", "minutes": 1, "fields": [{"type": "prompt", "label": "要念的文字"}]},
       "capability": "audio",
       "type": "tts",
       "service": "tts",
