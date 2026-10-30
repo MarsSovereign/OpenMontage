@@ -231,7 +231,9 @@ class Gateway:
 
     def recent(self, limit: int = 30) -> list[dict]:
         waiting = [j.id for j in list(self.queue.queue)]
-        jobs = sorted(self.jobs.values(), key=lambda j: j.created, reverse=True)[:limit]
+        # Insertion order breaks ties: on Windows time.time() can repeat for jobs made in one request.
+        order = {jid: i for i, jid in enumerate(self.jobs)}
+        jobs = sorted(self.jobs.values(), key=lambda j: (j.created, order[j.id]), reverse=True)[:limit]
         return [j.summary(waiting.index(j.id) + 1 if j.id in waiting else None) for j in jobs]
 
     def easy_modes(self) -> dict:
