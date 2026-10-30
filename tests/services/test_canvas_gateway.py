@@ -72,7 +72,9 @@ def setup(tmp_path):
             {
                 "name": "local-talk-video", "capability": "video", "type": "command", "min_images": 1, "min_audios": 1,
                 "command": [sys.executable, "-c",
-                            "import shutil,sys; shutil.copy(sys.argv[1], sys.argv[2])", "{audio1}", "{out}"],
+                            "import pathlib,shutil,sys; shutil.copy(sys.argv[1], sys.argv[2]); "
+                            "pathlib.Path(sys.argv[3], 'note.txt').write_text('分 2 段出片', encoding='utf-8')",
+                            "{audio1}", "{out}", "{job_dir}"],
                 "easy": {"button": "数字人口播", "fields": [{"type": "image"}, {"type": "speech"}]},
             },
             {"name": "local-tts-lyra", "capability": "audio", "type": "tts", "service": "tts", "voice": "lyra",
@@ -146,7 +148,9 @@ def test_command_model_gets_files_as_placeholders(setup):
         data={"model": "local-talk-video", "prompt": "你好"},
         files=[("images", ("card.png", b"img", "image/png")), ("audio[]", ("line.mp3", b"voice", "audio/mpeg"))],
     ).json()["id"]
-    assert client.get(f"/v1/videos/{job_id}").json()["status"] == "completed"
+    status = client.get(f"/v1/videos/{job_id}").json()
+    assert status["status"] == "completed"
+    assert status["note"] == "分 2 段出片"   # job_dir/note.txt left by the command reaches the page
     assert client.get(f"/v1/videos/{job_id}/content").content == b"voice"
 
 

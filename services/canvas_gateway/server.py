@@ -76,6 +76,7 @@ class Job:
     request: GenRequest
     status: str = "queued"
     error: str | None = None
+    note: str | None = None   # a model's command may leave job_dir/note.txt for the page (e.g. 换人 split into parts)
     output: Path | None = None
     started: float | None = None
     finished: float | None = None
@@ -93,6 +94,8 @@ class Job:
         }
         if self.error:
             body["error"] = {"message": self.error}
+        if self.note:
+            body["note"] = self.note
         return body
 
     def summary(self, queue_position: int | None) -> dict:
@@ -111,7 +114,7 @@ class Job:
     def save(self) -> None:
         meta = {
             "id": self.id, "model": self.model, "kind": self.kind, "status": self.status,
-            "error": self.error, "output": str(self.output) if self.output else None,
+            "error": self.error, "note": self.note, "output": str(self.output) if self.output else None,
             "created": self.created, "started": self.started, "finished": self.finished,
             "prompt": self.request.prompt,
         }
@@ -164,7 +167,7 @@ class Gateway:
                 continue
             job = Job(id=meta["id"], model=meta["model"], kind=meta["kind"], created=meta["created"],
                       dir=meta_path.parent, request=GenRequest(prompt=meta.get("prompt", "")),
-                      started=meta.get("started"), finished=meta.get("finished"))
+                      started=meta.get("started"), finished=meta.get("finished"), note=meta.get("note"))
             if meta["status"] == "completed" and meta.get("output") and Path(meta["output"]).is_file():
                 job.status, job.output = "completed", Path(meta["output"])
             else:
@@ -212,6 +215,9 @@ class Gateway:
                 log.exception("job %s crashed", job.id)
             job.status, job.error = "failed", str(exc) or type(exc).__name__
         finally:
+            note = job.dir / "note.txt"
+            if note.is_file():
+                job.note = note.read_text(encoding="utf-8", errors="replace").strip() or None
             job.finished = time.time()
             for name in model.get("services") or ([model["service"]] if model.get("service") else []):
                 self.services.touch(name)

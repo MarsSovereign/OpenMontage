@@ -64,6 +64,7 @@
   .job .state.failed { color: var(--bad); }
   .job .prompt { color: var(--muted); font-size: 14px; margin: 4px 0; overflow-wrap: anywhere; }
   .job .err { color: var(--bad); font-size: 14px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .job .note { color: var(--muted); font-size: 14px; white-space: pre-wrap; overflow-wrap: anywhere; }
   .job video, .job img { max-width: 100%; max-height: 420px; border-radius: 10px; display: block; margin-top: 8px; }
   .job audio { width: 100%; margin-top: 8px; }
   .job a.dl { display: inline-block; margin-top: 8px; color: var(--accent); font-weight: 600; }
@@ -237,7 +238,7 @@ async function refresh() {
     return `<div class="job"><div class="top"><span class="name">${esc(names[j.model] || j.model)}</span>` +
       `<span class="state ${j.status}">${esc(state)}</span></div>` +
       (j.prompt ? `<div class="prompt">${esc(j.prompt)}</div>` : "") +
-      (j.error ? `<div class="err">${esc(j.error.message)}</div>` : "") + media + `</div>`;
+      (j.error ? `<div class="err">${esc(j.error.message)}</div>` : "") + (j.note ? `<div class="note">${esc(j.note)}</div>` : "") + media + `</div>`;
   });
   // Rebuild only when something changed, so a video that is playing keeps playing.
   const next = html.join("");
