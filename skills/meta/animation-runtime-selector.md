@@ -2,7 +2,7 @@
 
 Meta-skill that answers two questions:
 
-1. **Which composition runtime should this video use?** — Remotion, HyperFrames, or FFmpeg.
+1. **Which composition runtime should this video use?** — Remotion, HyperFrames, FFmpeg, or Lemo-Opuscar.
 2. **Which animation library / Layer 3 skills should this scene reach for?** — Remotion primitives, GSAP plugins, framer-motion, Lottie, Manim, D3.
 
 Read this before authoring any animated component or composition, and whenever you're choosing `render_runtime` at proposal time. It routes you to the right Layer 3 skill so you don't waste time hand-rolling what a plugin already solves.
@@ -69,6 +69,7 @@ when both were available is a CRITICAL reviewer finding.
 | BGM / SFX / image / icon resolution (any pipeline, any runtime) | n/a | `.agents/skills/media-use/SKILL.md` — `resolve` verb against project cache + global cache + HeyGen catalog |
 | Short design-led motion graphic (lower-third, stat reveal, logo sting, headline) | **hyperframes** | `.agents/skills/motion-graphics/SKILL.md` |
 | Pure concat / trim of source clips, no composition needed | **ffmpeg** | `skills/core/ffmpeg.md` |
+| A named Lemo-Opuscar style, or an illustrated / printmaking / period / data-led look drawn in code (ink wash, impasto, woodcut, ukiyo-e, pixel RPG, cel anime, satellite briefing, news package…) | **lemo-opuscar** | `.agents/skills/lemo-opuscar/SKILL.md`; catalogue: `lemo_opuscar_compose` operation=`styles` |
 | Selected runtime is unavailable | **escalate** — do not substitute silently | `AGENT_GUIDE.md` → Escalate Blockers |
 
 Read `skills/core/hyperframes.md` for the full Remotion-vs-HyperFrames

@@ -367,7 +367,7 @@ When tools are `UNAVAILABLE` but can be fixed with simple configuration, **offer
 
 ### Composition Runtimes (Inside video_compose)
 
-`video_compose` has **three** render engines / runtimes. They are parallel, not ranked — the choice is made at proposal and locked in `edit_decisions.render_runtime`. Check which are available:
+`video_compose` has **four** render engines / runtimes. They are parallel, not ranked — the choice is made at proposal and locked in `edit_decisions.render_runtime`. Check which are available:
 
 ```bash
 python -c "
@@ -377,6 +377,7 @@ info = registry._tools['video_compose'].get_info()
 print('Render engines:', info.get('render_engines'))
 print('Remotion note:', info.get('remotion_note'))
 print('HyperFrames note:', info.get('hyperframes_note'))
+print('Lemo-Opuscar note:', info.get('lemo_opuscar_note'))
 "
 ```
 
@@ -385,6 +386,7 @@ print('HyperFrames note:', info.get('hyperframes_note'))
 | **FFmpeg** | Video-only cuts, concat, trim, subtitle burn | `ffmpeg` binary (always available) |
 | **Remotion** | React-based composition: still images → animated video, text cards, stat cards, charts, callouts, comparisons, transitions with spring physics, word-level caption burn, TalkingHead avatar | Node.js (`npx`) + `remotion-composer/` + `node_modules` |
 | **HyperFrames** | HTML/CSS/GSAP composition: kinetic typography, product promos, launch reels, website-to-video, registry-block-driven scenes, SVG character rigs | Node.js ≥ 22 + FFmpeg + `npx` (consumed via `npx hyperframes`) |
+| **Lemo-Opuscar** | A film in one of the Lemo-Opuscar library's 66+ code-drawn styles (ink wash, impasto, woodcut, pixel RPG, data story, news package…): hand-authored `render(t)` page, own score and mix, AI plates / H3 clips placed frame-exactly. Layer 3: `.agents/skills/lemo-opuscar/SKILL.md` | The library (`LEMO_OPUSCAR_HOME`) + Node.js ≥ 20 + FFmpeg; `lemo_opuscar_compose` operation=`doctor` |
 
 `render_runtime` is **locked at proposal** (`proposal_packet.production_plan.render_runtime`) and **carried through edit_decisions unchanged**. `video_compose` routes based on this field; silent runtime swaps are forbidden. If the chosen runtime becomes unavailable at compose time, surface a structured blocker per "Escalate Blockers Explicitly" above. See `skills/core/hyperframes.md` for the Remotion-vs-HyperFrames decision matrix.
 

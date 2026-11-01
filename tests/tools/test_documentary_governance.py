@@ -110,13 +110,13 @@ def test_documentary_renderer_family_maps_to_remotion():
     assert VideoCompose._get_composition_id("documentary-montage") == "CinematicRenderer"
 
 
-def test_video_compose_surfaces_all_three_runtimes():
-    """Preflight must see remotion, hyperframes, and ffmpeg as separate engines."""
+def test_video_compose_surfaces_all_runtimes():
+    """Preflight must see remotion, hyperframes, ffmpeg and lemo-opuscar as separate engines."""
     import shutil
 
     info = VideoCompose().get_info()
     engines = info["render_engines"]
-    assert set(engines.keys()) == {"remotion", "hyperframes", "ffmpeg"}
+    assert set(engines.keys()) == {"remotion", "hyperframes", "ffmpeg", "lemo-opuscar"}
     assert engines["ffmpeg"] is bool(shutil.which("ffmpeg"))
     assert "hyperframes_note" in info
     assert "runtime_governance" in info

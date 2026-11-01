@@ -200,8 +200,24 @@
     },
     "render_runtime": {
       "type": "string",
-      "enum": ["remotion", "hyperframes", "ffmpeg"],
+      "enum": ["remotion", "hyperframes", "ffmpeg", "lemo-opuscar"],
       "description": "Locked at proposal stage — technical runtime that realizes renderer_family. Edit MUST carry this forward unchanged unless a logged render_runtime_selection decision overrides it."
+    },
+    "lemo_opuscar": {
+      "type": "object",
+      "description": "Required when render_runtime='lemo-opuscar'. The authored film folder and its render settings; video_compose hands them to lemo_opuscar_compose.",
+      "required": ["film_dir"],
+      "properties": {
+        "film_dir": { "type": "string", "description": "Film folder with index.html (window.render(t)), mix.py and the film's assets; usually projects/<id>/lemo/<name>." },
+        "style": { "type": "string", "description": "Library style slug (styles/<slug>/STYLE.md) or a saved style in ~/lemo-my-styles." },
+        "fps": { "type": "number", "minimum": 1, "maximum": 60 },
+        "size": { "type": "string", "pattern": "^\\d+x\\d+$", "description": "e.g. 1080x1920 for vertical; default 1920x1080" },
+        "grain": { "type": "number", "minimum": 0, "description": "Film grain at mux; 0 for pixel and vector styles" },
+        "workers": { "type": "integer", "minimum": 1, "maximum": 6 },
+        "query": { "type": "string", "description": "Passed to the page as location.search" },
+        "from_step": { "type": "string", "enum": ["events", "video", "mix", "mux"] }
+      },
+      "additionalProperties": false
     },
     "composition_mode": {
       "type": "string",

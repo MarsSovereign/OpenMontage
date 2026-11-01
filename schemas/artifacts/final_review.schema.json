@@ -85,7 +85,7 @@
             "renderer_family_used": { "type": "string", "description": "Creative grammar that actually ran" },
             "render_runtime_used": {
               "type": "string",
-              "enum": ["remotion", "hyperframes", "ffmpeg"],
+              "enum": ["remotion", "hyperframes", "ffmpeg", "lemo-opuscar"],
               "description": "Technical runtime that actually executed the render. Must match the runtime locked at proposal unless a logged decision overrode it."
             },
             "runtime_swap_detected": {

@@ -14,6 +14,9 @@ Routing is driven by `edit_decisions.render_runtime` (locked at proposal):
                  registry blocks. Added in the parallel-runtime initiative.
 - `ffmpeg`     → FFmpeg concat/trim. Used only for simple video cuts without
                  composition, or when the approved path explicitly names FFmpeg.
+- `lemo-opuscar` → a film authored in one of the Lemo-Opuscar library's code-drawn
+                 styles (ink wash, impasto, woodcut, pixel RPG, data story, ...),
+                 rendered by `lemo_opuscar_compose` from `edit_decisions.lemo_opuscar.film_dir`.
 
 Authoring mode is orthogonal to runtime. Setting
 `edit_decisions.composition_mode = "atelier"` (or `renderer_family="bespoke"`)
@@ -264,6 +267,14 @@ class VideoCompose(BaseTool):
         except Exception:
             return False
 
+    def _lemo_opuscar_available(self) -> bool:
+        """Check if the Lemo-Opuscar library and its renderer are ready (see lemo_opuscar_compose)."""
+        try:
+            from tools.video.lemo_opuscar_compose import LemoOpuscarCompose
+            return bool(LemoOpuscarCompose()._runtime_check()["runtime_available"])
+        except Exception:
+            return False
+
     def get_info(self) -> dict[str, Any]:
         """Extend base get_info to surface all available render runtimes.
 
@@ -275,10 +286,12 @@ class VideoCompose(BaseTool):
         ffmpeg_ok = self._ffmpeg_available()
         remotion_ok = self._remotion_available()
         hyperframes_ok = self._hyperframes_available()
+        lemo_ok = self._lemo_opuscar_available()
         info["render_engines"] = {
             "ffmpeg": ffmpeg_ok,
             "remotion": remotion_ok,
             "hyperframes": hyperframes_ok,
+            "lemo-opuscar": lemo_ok,
         }
         # Backwards-compat alias — some proposal skills inspect this name.
         info["render_runtimes"] = info["render_engines"]
@@ -324,6 +337,17 @@ class VideoCompose(BaseTool):
                 "Run `make hyperframes-doctor` to see the specific missing piece, "
                 "or call `hyperframes_compose` operation='doctor' directly."
             )
+
+        info["lemo_opuscar_note"] = (
+            "Lemo-Opuscar is available: films in one of its code-drawn styles "
+            "(lemo_opuscar_compose operation='styles' lists them). The agent authors "
+            "the film folder per the 'lemo-opuscar' Layer 3 skill and sets "
+            "edit_decisions.lemo_opuscar.film_dir."
+            if lemo_ok else
+            "Lemo-Opuscar is NOT available. Set LEMO_OPUSCAR_HOME to the library "
+            "(MarsSovereign/lemo-opuscar) and run `python mars/setup.py deps` there; "
+            "lemo_opuscar_compose operation='doctor' names the missing piece."
+        )
 
         # Governance note — agents and reviewers consume this.
         info["runtime_governance"] = (
@@ -1551,20 +1575,25 @@ class VideoCompose(BaseTool):
                     "it MUST be locked at proposal stage (proposal_packet."
                     "production_plan.render_runtime) and carried forward through "
                     "edit_decisions.render_runtime. Valid values: 'remotion', "
-                    "'hyperframes', 'ffmpeg'. Re-run the proposal stage with an "
+                    "'hyperframes', 'ffmpeg', 'lemo-opuscar'. Re-run the proposal stage with an "
                     "explicit runtime choice — do NOT default this field."
                 ),
             )
 
-        if render_runtime not in {"remotion", "hyperframes", "ffmpeg"}:
+        if render_runtime not in {"remotion", "hyperframes", "ffmpeg", "lemo-opuscar"}:
             return ToolResult(
                 success=False,
                 error=(
                     f"Unknown render_runtime {render_runtime!r}. "
-                    f"Valid values: remotion, hyperframes, ffmpeg. "
+                    f"Valid values: remotion, hyperframes, ffmpeg, lemo-opuscar. "
                     f"render_runtime must be set at proposal stage."
                 ),
             )
+
+        # Lemo-Opuscar films are hand-authored pages with their own timeline and
+        # mix: no cuts or asset manifest to resolve, so route before those checks.
+        if render_runtime == "lemo-opuscar":
+            return self._render_via_lemo_opuscar(inputs, edit_decisions)
 
         # --- Atelier (bespoke) mode -------------------------------------
         # Hand-authored, project-local Remotion composition. Deliberately
@@ -1879,6 +1908,69 @@ class VideoCompose(BaseTool):
                     data=render_result.data,
                 )
 
+        return render_result
+
+    def _render_via_lemo_opuscar(
+        self, inputs: dict[str, Any], edit_decisions: dict[str, Any]
+    ) -> ToolResult:
+        """Delegate to lemo_opuscar_compose and run the mandatory final self-review.
+
+        `edit_decisions.lemo_opuscar` = {film_dir, fps?, size?, grain?, workers?, query?}.
+        Governance as for the other runtimes: an unavailable library is a BLOCKER,
+        never a silent switch to Remotion or FFmpeg.
+        """
+        spec = edit_decisions.get("lemo_opuscar") or {}
+        film_dir = spec.get("film_dir")
+        if not film_dir:
+            return ToolResult(
+                success=False,
+                error=(
+                    "render_runtime='lemo-opuscar' needs edit_decisions.lemo_opuscar.film_dir "
+                    "(the authored film folder with index.html). See the 'lemo-opuscar' Layer 3 skill."
+                ),
+            )
+        if not self._lemo_opuscar_available():
+            return ToolResult(
+                success=False,
+                error=(
+                    "render_runtime='lemo-opuscar' was locked at proposal, but the "
+                    "Lemo-Opuscar library is not ready on this machine. Per governance "
+                    "this is a BLOCKER — surface it to the user and wait for approval "
+                    "before switching runtime. Run lemo_opuscar_compose operation='doctor' "
+                    "for the missing piece."
+                ),
+            )
+        from tools.video.lemo_opuscar_compose import LemoOpuscarCompose
+
+        output_path = Path(inputs.get("output_path", "renders/output.mp4"))
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        call = {k: spec[k] for k in ("fps", "size", "grain", "workers", "query", "from_step") if k in spec}
+        render_result = LemoOpuscarCompose().execute(
+            {"operation": "render", "film_dir": film_dir, "output_path": str(output_path), **call}
+        )
+        if render_result.success and output_path.exists():
+            final_review = self._run_final_review(
+                output_path,
+                edit_decisions,
+                inputs.get("proposal_packet"),
+                narration_transcript_path=inputs.get("narration_transcript_path"),
+                script_text=inputs.get("script_text") or self._read_text_file(
+                    inputs.get("script_path")
+                ),
+            )
+            if render_result.data is None:
+                render_result.data = {}
+            render_result.data["final_review"] = final_review
+            render_result.data["final_review_status"] = final_review["status"]
+            if final_review["status"] == "fail":
+                return ToolResult(
+                    success=False,
+                    error=(
+                        "Post-render self-review FAILED (Lemo-Opuscar). The output is not presentable.\n"
+                        + "\n".join(f"  • {i}" for i in final_review.get("issues_found", []))
+                    ),
+                    data=render_result.data,
+                )
         return render_result
 
     def _render_via_ffmpeg(
