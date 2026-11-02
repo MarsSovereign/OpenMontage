@@ -57,6 +57,17 @@ Never repeat the same action on both sides of a cut or teleport a prop between h
   timed action with consequence and reaction, exact lines with speaker IDs, synchronous sound, closing state.
 - No readable text, captions, logos or watermarks in the picture.
 
+### 5. Show It on the Canvas (Optional)
+
+If the user works in Infinite Canvas, run `canvas_storyboard` with `project_dir` and give them the archive
+(`renders/<id>.canvas.zip`) to import from the canvas library, with the "film" plugin enabled. It lays out
+character and location cards with their reference images, one shot node per scene wired to its
+references in `<Picture N>` order, accepted clips behind their shots, and a timeline. When Canvas Agent is
+connected, send the returned `ops` through its `canvas_apply_ops` tool instead to update the open canvas
+(pass `media_base_url` if a server the browser can reach serves the project files; otherwise the live
+nodes have no media). Edits made on the canvas are not read back automatically: ask the user what they
+changed before relying on the artifacts.
+
 ## Quality Gate
 
 - every segment has a scene and a complete six-section prompt,

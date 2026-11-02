@@ -89,7 +89,10 @@ stages:
       - proposal_packet
     produces:
       - scene_plan
-    tools_available: []
+    optional_tools:
+      - canvas_storyboard
+    tools_available:
+      - canvas_storyboard
     checkpoint_required: true
     human_approval_default: true
     review_focus:
@@ -119,6 +122,7 @@ stages:
       - h3_studio_music
       - music_gen
       - frame_sampler
+      - canvas_storyboard
     tools_available:
       - h3_studio_image
       - h3_studio_video
@@ -127,6 +131,7 @@ stages:
       - h3_studio_music
       - music_gen
       - frame_sampler
+      - canvas_storyboard
     checkpoint_required: true
     human_approval_default: true
     review_focus:
@@ -208,6 +213,7 @@ stages:
     tools_available:
       - h3_studio_image
       - image_selector
+      - canvas_storyboard
     checkpoint_required: true
     human_approval_default: true
     review_focus:

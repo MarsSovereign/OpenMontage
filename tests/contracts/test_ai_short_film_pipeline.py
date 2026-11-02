@@ -96,3 +96,9 @@ def test_artifact_shapes_described_by_the_directors_validate():
         "subtitles": {"enabled": False},
         "metadata": {"soft_subtitles": {"source_language": "zho", "translation_language": "eng", "default": "zho"}},
     })
+
+
+def test_storyboard_export_is_offered_at_review_stages():
+    for stage in RAW["stages"]:
+        if stage["name"] in ("scene_plan", "assets", "publish"):
+            assert "canvas_storyboard" in stage["tools_available"], stage["name"]

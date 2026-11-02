@@ -21,7 +21,9 @@ The film passed its final review. Package it for release.
    8-12 fitting hashtags, runtime, resolution and the subtitle languages.
 3. **Package:** the film with embedded tracks, the clean master, the cover, both SRT files as sidecars
    and the notes. Record each in `publish_log.entries`.
-4. Tell the user what QC was actually done and any unresolved issue, and where every file is.
+4. Optionally export the final storyboard with `canvas_storyboard` (cards, shots and accepted takes) as
+   part of the package, for later revisions on the canvas.
+5. Tell the user what QC was actually done and any unresolved issue, and where every file is.
 
 ## Quality Gate
 
