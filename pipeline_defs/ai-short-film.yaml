@@ -1,0 +1,217 @@
+name: ai-short-film
+version: "1.0"
+description: >
+  Story-driven AI short film or episode (1-15 minutes) built from 5-15 second MiniMax-H3 shots with
+  native dialogue, sound and music. Characters and locations are locked as reference images first,
+  every shot is generated in reference-to-video mode against those references, the clips are
+  assembled frame-accurately, and the film ships with reviewed source-language and translated soft
+  subtitles. Runs free on a self-hosted MiniMax-H3 Studio (h3_studio_* tools); hosted H3 routes work
+  through video_selector when the user approves them.
+category: cinematic
+stability: beta
+default_checkpoint_policy: guided
+
+reference_input:
+  supported: true
+  analysis_depth: standard
+  analysis_tools:
+    - video_analyzer
+    - scene_detect
+    - frame_sampler
+
+extensions:
+  custom_scripts: false
+  custom_playbooks: true
+  custom_skills: true
+  custom_tools: false
+
+required_skills:
+  - pipelines/ai-short-film/proposal-director
+  - pipelines/ai-short-film/script-director
+  - pipelines/ai-short-film/scene-director
+  - pipelines/ai-short-film/asset-director
+  - pipelines/ai-short-film/edit-director
+  - pipelines/ai-short-film/compose-director
+  - pipelines/ai-short-film/publish-director
+  - creative/h3-reference-prompting
+  - meta/reviewer
+  - meta/checkpoint-protocol
+
+compatible_playbooks:
+  recommended:
+    - clean-professional
+  also_works:
+    - premium-minimalist
+  custom_allowed: true
+
+stages:
+  - name: proposal
+    skill: pipelines/ai-short-film/proposal-director
+    produces:
+      - proposal_packet
+      - decision_log
+    tools_available: []
+    checkpoint_required: true
+    human_approval_default: true
+    review_focus:
+      - Frame, resolution, video route, spoken language, visual treatment and subtitle languages are confirmed by the user, not assumed
+      - Logline, stakes and ending are concrete enough to storyboard
+      - Runtime is realistic for the GPU queue (shot count x per-shot time) and stated to the user
+      - The video provider, model and resolution are announced with the reason
+    success_criteria:
+      - Schema-valid proposal_packet with production_plan.film settings recorded
+      - At least 3 concept options with different emotional arcs
+      - Cost and GPU-time estimate per stage
+
+  - name: script
+    skill: pipelines/ai-short-film/script-director
+    required_artifacts_in:
+      - proposal_packet
+    produces:
+      - script
+    tools_available: []
+    checkpoint_required: true
+    human_approval_default: true
+    review_focus:
+      - The complete story is written before any shot is planned; the opening earns attention in 5-15 seconds
+      - Every recurring character has a full visual card and one fixed voice description
+      - Every location has layout, landmarks, light and recurring sound
+      - Every line of dialogue fits its segment's speech budget
+    success_criteria:
+      - Schema-valid script whose sections are the film's 5-15 second segments
+      - script.metadata.story_bible lists characters, voices, locations and continuity rules
+
+  - name: scene_plan
+    skill: pipelines/ai-short-film/scene-director
+    required_artifacts_in:
+      - script
+    optional_artifacts_in:
+      - proposal_packet
+    produces:
+      - scene_plan
+    tools_available: []
+    checkpoint_required: true
+    human_approval_default: true
+    review_focus:
+      - One scene per segment, each a single continuous H3 shot of 5-15 seconds
+      - Each shot names its character and location references in upload order and has a complete six-section prompt
+      - Every join has a continuity note (axis, eyelines, props, light, sound)
+      - No readable text, captions or logos are requested inside shots
+    success_criteria:
+      - Schema-valid scene_plan whose metadata.shots covers every scene
+      - Every prompt placeholder is resolved
+
+  - name: assets
+    skill: pipelines/ai-short-film/asset-director
+    required_artifacts_in:
+      - scene_plan
+      - script
+    optional_artifacts_in:
+      - proposal_packet
+    produces:
+      - asset_manifest
+    required_tools:
+      - h3_studio_image
+      - h3_studio_video
+    optional_tools:
+      - image_selector
+      - video_selector
+      - h3_studio_music
+      - music_gen
+      - frame_sampler
+    tools_available:
+      - h3_studio_image
+      - h3_studio_video
+      - image_selector
+      - video_selector
+      - h3_studio_music
+      - music_gen
+      - frame_sampler
+    checkpoint_required: true
+    human_approval_default: true
+    review_focus:
+      - Character and location references were frozen before any video job
+      - Each clip uses only the references its prompt names, in the prompt's order
+      - Identity, costume, set geometry, action and speech completeness checked per clip and across joins
+      - Rejected takes are kept and the reason is logged
+    success_criteria:
+      - Schema-valid asset_manifest with every reference and accepted clip, job id and seed
+      - All referenced files exist on disk
+
+  - name: edit
+    skill: pipelines/ai-short-film/edit-director
+    required_artifacts_in:
+      - scene_plan
+      - asset_manifest
+    optional_artifacts_in:
+      - script
+    produces:
+      - edit_decisions
+    tools_available: []
+    checkpoint_required: true
+    human_approval_default: false
+    review_focus:
+      - Story order and timings come from the accepted clips' real frame counts
+      - Native dialogue is never trimmed mid-word
+      - Any score or title card is justified and does not bury dialogue
+    success_criteria:
+      - Schema-valid edit_decisions covering every accepted clip
+
+  - name: compose
+    skill: pipelines/ai-short-film/compose-director
+    required_artifacts_in:
+      - edit_decisions
+      - asset_manifest
+    optional_artifacts_in:
+      - script
+      - proposal_packet
+    produces:
+      - render_report
+      - final_review
+    required_tools:
+      - clip_assembler
+      - subtitle_mux
+    optional_tools:
+      - h3_studio_transcriber
+      - transcriber
+      - audio_mixer
+      - h3_studio_image
+    tools_available:
+      - clip_assembler
+      - subtitle_mux
+      - h3_studio_transcriber
+      - transcriber
+      - audio_mixer
+      - h3_studio_image
+      - video_compose
+    checkpoint_required: true
+    human_approval_default: false
+    review_focus:
+      - The clean master's frame count equals the sum of accepted clips and audio stays in sync
+      - Subtitles come from transcribing the final edit, reviewed against the audio, never from the script
+      - Translation is made from the reviewed transcript; both tracks are soft and switchable
+      - Nothing is burned into the picture
+    success_criteria:
+      - Schema-valid render_report and final_review
+      - Final MP4 has one video, one audio and the agreed subtitle tracks, verified with ffprobe
+
+  - name: publish
+    skill: pipelines/ai-short-film/publish-director
+    required_artifacts_in:
+      - render_report
+      - final_review
+    optional_artifacts_in:
+      - proposal_packet
+      - script
+    produces:
+      - publish_log
+    tools_available:
+      - h3_studio_image
+      - image_selector
+    checkpoint_required: true
+    human_approval_default: true
+    review_focus:
+      - Cover matches the locked characters and style, title spelled correctly
+      - Description discloses AI generation
+    success_criteria:
+      - Schema-valid publish_log listing film, cover, both SRTs and publish notes

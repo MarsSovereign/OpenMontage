@@ -205,6 +205,7 @@ stages:
 
 | Pipeline | Category | Description |
 |----------|----------|-------------|
+| `ai-short-film` | cinematic | Story-driven short film from MiniMax-H3 reference shots with soft subtitles |
 | `animated-explainer` | generated | AI-produced explainer with research, narration, visuals, music |
 | `animation` | animation | Motion graphics, kinetic typography |
 | `avatar-spokesperson` | talking_head | Avatar-driven presenter videos |

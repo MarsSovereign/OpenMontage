@@ -104,6 +104,10 @@ VIDEO_GEN_LOCAL_MODEL=       # wan2.2-ti2v-5b, wan2.1-1.3b, wan2.1-14b, hunyuan-
 # COMFYUI (optional overrides; localhost:8188 is the default)
 COMFYUI_SERVER_URL=          # Local ComfyUI server for shared workflows
 COMFYUI_VIDEO_SERVER_URL=    # Optional video-specific ComfyUI server
+
+# MINIMAX-H3 STUDIO (self-hosted on your GPU; free per call)
+H3_STUDIO_URL=               # e.g. http://gpu-host:8190 — h3_studio_video/image/tts/music/transcriber
+H3_STUDIO_TOKEN=             # Only when the Studio sets H3_API_TOKEN
 ```
 
 ---
@@ -118,7 +122,7 @@ speculative model strings.
 |-------|-----------------|--------|--------|-----------------------|---------------|
 | **Gemini Omni Flash** | Google `gemini_omni_video` (`gemini-omni-1.1-flash`) | `gemini_omni_fal` (T2V, I2V, references, editing) | `runway_video` model `gemini_omni_flash` | Legacy `GeminiVideoOmni` mapping is not a stable 1.1 fallback; migrate separately to `GeminiVideoOmniV2` | Not available as local weights |
 | **Seedance 2.5** | Volcengine `seedance_ark` model variant `2.5` | `seedance_video` model version `2.5` | `runway_video` model `seedance2_5` | `ByteDance2TextToVideoNode` (hosted, paid credits) | Not available as local weights |
-| **MiniMax H3** | `minimax_video` model `MiniMax-H3` | `minimax_fal_video` (`hailuo-03`) | `runway_video` model `hailuo3` | `MinimaxHailuo03TextToVideoNode` (hosted, paid credits) | Supported with official open weights and an exported API workflow |
+| **MiniMax H3** | `minimax_video` model `MiniMax-H3` | `minimax_fal_video` (`hailuo-03`) | `runway_video` model `hailuo3` | `MinimaxHailuo03TextToVideoNode` (hosted, paid credits) | Supported with official open weights and an exported API workflow, or through a self-hosted MiniMax-H3 Studio (`h3_studio_video`) |
 
 ComfyUI Partner Nodes run inside the ComfyUI graph but call hosted services;
 they require network access, a logged-in Comfy account, and prepaid credits.

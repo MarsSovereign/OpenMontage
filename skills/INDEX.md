@@ -108,6 +108,7 @@ Key capability families to look for in the output:
 | â†³ VEO Prompting | `creative/prompting/veo-prompting.md` | VEO 3.1 14-component structure, art movements | `ai-video-gen` |
 | â†³ LTX Prompting | `creative/prompting/ltx-prompting.md` | LTX-2 6-element structure, audio prompting | `ltx2` |
 | â†³ HunyuanVideo Prompting | `creative/prompting/hunyuan-prompting.md` | HunyuanVideo formula, I2V best practices | â€" |
+| H3 Reference Prompting | `creative/h3-reference-prompting.md` | MiniMax-H3 reference-to-video six-section prompts, fixed voices, speech budget, consistent characters across shots | `minimax-h3` |
 | Storytelling | `creative/storytelling.md` | Narrative structure, hooks, pacing, Mayer's principles | â€" |
 | Sound Design | `creative/sound-design.md` | Audio ducking, LUFS targets, SFX timing, AI TTS mixing | `elevenlabs`, `procedural-sfx` |
 | Typography | `creative/typography.md` | Font selection, text sizing, safe zones, caption styling | â€" |
@@ -224,6 +225,18 @@ Stage director skills teach the agent HOW to execute each pipeline stage. Each s
 | Edit Director | `pipelines/cinematic/edit-director.md` | `edit` | Emotion-first pacing, reveal timing, audio-driven rhythm |
 | Compose Director | `pipelines/cinematic/compose-director.md` | `compose` | Grade and mix finishing, frame-treatment judgment |
 | Publish Director | `pipelines/cinematic/publish-director.md` | `publish` | Hero vs teaser packaging, poster-frame concepts |
+
+### AI Short Film Pipeline (`pipelines/ai-short-film/`) — v1.0 (beta)
+
+| Skill | File | Stage | Key Capabilities |
+|-------|------|-------|-----------------|
+| Proposal Director | `pipelines/ai-short-film/proposal-director.md` | `proposal` | Confirmed film settings (frame, resolution, language, treatment, subtitles), GPU-time estimate |
+| Script Director | `pipelines/ai-short-film/script-director.md` | `script` | Whole story first, story bible with character/location cards and fixed voices, speech budgets |
+| Scene Director | `pipelines/ai-short-film/scene-director.md` | `scene_plan` | One H3 shot per segment, six-section prompts, reference upload order, continuity ledger |
+| Asset Director | `pipelines/ai-short-film/asset-director.md` | `assets` | Frozen character/location references, `h3_studio_video` shots, take and join QC |
+| Edit Director | `pipelines/ai-short-film/edit-director.md` | `edit` | Cut list from real frame counts, no trims inside speech |
+| Compose Director | `pipelines/ai-short-film/compose-director.md` | `compose` | `clip_assembler` master, Qwen3-ASR transcript review, translation, `subtitle_mux` soft tracks |
+| Publish Director | `pipelines/ai-short-film/publish-director.md` | `publish` | Cover from locked references, AI disclosure, sidecar SRTs |
 
 ### Animation Pipeline (`pipelines/animation/`) — v2.0
 

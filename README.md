@@ -344,6 +344,7 @@ Each pipeline is a complete production workflow, from idea to finished video.
 
 | Pipeline | What It Produces | Best For |
 |----------|-----------------|----------|
+| **AI Short Film** | Story-driven short film or episode from MiniMax-H3 shots with locked characters, native dialogue and soft bilingual subtitles | Narrative shorts, drama scenes, novel and fable adaptations on a self-hosted GPU |
 | **Animated Explainer** | AI-generated explainer with research, narration, visuals, music | Educational content, tutorials, topic breakdowns |
 | **Animation** | Motion graphics, kinetic typography, animated sequences | Social media, product demos, abstract concepts |
 | **Avatar Spokesperson** | Avatar-driven presenter videos | Corporate comms, training, announcements |

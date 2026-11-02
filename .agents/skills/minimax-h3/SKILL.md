@@ -19,6 +19,7 @@ MiniMax H3 is the Hailuo 3.0 family. The first-party API identifier is
 | Runway | `runway_video`, `model: "hailuo3"` | Hosted; 768P or 2K, 5–15 seconds |
 | ComfyUI Partner Node | `comfyui_video`, `model_family: "minimax_h3_api"` | Hosted and billed in Comfy credits |
 | ComfyUI open weights | `comfyui_video`, `model_family: "minimax_h3_local"` | Local GPU with official workflow and model stack |
+| MiniMax-H3 Studio | `h3_studio_video` (`model` = a Studio choice such as `fasth3-omniref`) | Self-hosted Studio on your own GPU; free, queued; all four modes plus reference videos and guide audio |
 
 For local ComfyUI, export the official workflow in API format and pass
 `workflow_json` or `workflow_path` plus `output_node`. OpenMontage reports the
@@ -33,8 +34,10 @@ does not silently download large weights.
 - Reference-to-video: images, videos, and audio can be combined. Audio needs at
   least one visual reference.
 
-Write prompts as subject + action + camera path + environment + lighting +
-audio intent. MiniMax responds well to explicit camera direction. Keep the
+For reference-to-video with recurring characters, follow
+`skills/creative/h3-reference-prompting.md` (official six-section layout,
+fixed voices, speech budget). Otherwise write prompts as subject + action +
+camera path + environment + lighting + audio intent. MiniMax responds well to explicit camera direction. Keep the
 requested motion achievable within 4–15 seconds and inspect native audio as
 carefully as the image track.
 
